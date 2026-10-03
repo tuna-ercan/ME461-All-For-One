@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+
+# Models: downloaded automatically on first run
+*.pt
+*.task
+# TensorRT engine only works on the GPU it was built on (python export_engine.py)
+*.engine
+*.onnx
+
+# Ultralytics run outputs
+runs/

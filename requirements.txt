@@ -1,0 +1,9 @@
+pygame
+opencv-python
+numpy
+mediapipe
+ultralytics
+# For GPU speed-up install the CUDA build of torch instead of the default one, e.g.
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130
+# and optionally TensorRT (then run: python export_engine.py)
+#   pip install tensorrt-cu13
