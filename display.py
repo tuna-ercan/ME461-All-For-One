@@ -12,6 +12,9 @@
 Scenes draw onto `canvas` (map-view sized); present() scales it into the
 window. Mouse positions must go through to_canvas() before hit-testing.
 F11 (handled in handle_event) switches between window and fullscreen.
+
+Why a canvas: scenes always draw at the same size (1365 x 721) no matter how
+big the window is; only present() deals with the real window size.
 """
 import pygame
 
@@ -26,20 +29,22 @@ class Display:
         cw, ch = canvas_size
         # whole layout at canvas scale (1 unit = 1 canvas px)
         self.margin = config.LAYOUT_MARGIN * cw
-        self.full_w = cw + config.LAYOUT_CAMERA_WIDTH * cw + 3 * self.margin
+        self.full_w = cw + config.LAYOUT_CAMERA_WIDTH * cw + 3 * self.margin   # game + camera + 3 gaps
         self.full_h = ch + 4 * self.margin
         self.fullscreen = False
-        self.cam_surface = None
-        self._cam_source = None
+        self.cam_surface = None        # last camera picture, already scaled for the panel
+        self._cam_source = None        # the frame cam_surface was made from
         self._set_mode(config.START_FULLSCREEN)
         self.canvas = pygame.Surface(canvas_size).convert()
 
     # -------------------------------------------------------------- window --
     def _set_mode(self, fullscreen):
+        """Create (or re-create) the window, then work out where things go in it."""
         self.fullscreen = fullscreen
         if fullscreen:
-            self.window = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+            self.window = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)   # (0, 0) = screen size
         else:
+            # biggest scale that fits LAYOUT_SCREEN_FILL of the desktop (and WINDOW_SCALE)
             desk_w, desk_h = pygame.display.get_desktop_sizes()[0]
             s = min(config.WINDOW_SCALE, desk_w * config.LAYOUT_SCREEN_FILL / self.full_w,
                     desk_h * config.LAYOUT_SCREEN_FILL / self.full_h)
@@ -49,13 +54,14 @@ class Display:
     def _layout(self, w, h):
         """Fit the layout into a w x h window, centred (letterboxed in fullscreen)."""
         cw, ch = self.canvas_size
-        s = min(w / self.full_w, h / self.full_h)
+        s = min(w / self.full_w, h / self.full_h)    # scale that fits both width and height
         self.scale = s
-        left = (w - self.full_w * s) / 2
+        left = (w - self.full_w * s) / 2             # empty space on each side, if any
         m = self.margin * s
         self.game_rect = pygame.Rect(round(left + m), 0, round(cw * s), round(ch * s))
         self.game_rect.centery = h // 2
         cam_w = round(config.LAYOUT_CAMERA_WIDTH * cw * s)
+        # camera panel: right of the game, 4:3 shape (like a webcam picture), a bit above centre
         self.cam_rect = pygame.Rect(self.game_rect.right + round(m), 0, cam_w, round(cam_w * 3 / 4))
         self.cam_rect.centery = round(self.game_rect.centery - self.game_rect.h * 0.08)
         self.label_font = pygame.font.SysFont("arial", max(14, cam_w // 22), bold=True)
@@ -73,27 +79,33 @@ class Display:
 
     def to_canvas(self, pos):
         """Window pixel -> canvas pixel (for mouse clicks)."""
+        # undo what present() did: subtract the game panel's corner, divide by the scale
         return ((pos[0] - self.game_rect.x) / self.scale, (pos[1] - self.game_rect.y) / self.scale)
 
     # ---------------------------------------------------------------- draw --
     def present(self):
+        """Put the finished canvas and the camera picture in the window and show it."""
         self.window.fill(config.LAYOUT_BG)
         if self.game_rect.size == self.canvas.get_size():
-            self.window.blit(self.canvas, self.game_rect)
+            self.window.blit(self.canvas, self.game_rect)          # same size: plain copy (fast)
         else:
             self.window.blit(pygame.transform.smoothscale(self.canvas, self.game_rect.size),
                              self.game_rect)
-        pygame.draw.rect(self.window, (0, 0, 0), self.game_rect.inflate(6, 6), 3)
+        pygame.draw.rect(self.window, (0, 0, 0), self.game_rect.inflate(6, 6), 3)   # black frame
         self._draw_camera()
+        # Everything above was drawn into a hidden buffer; flip() shows it all at
+        # once, so the player never sees a half-drawn frame.
         pygame.display.flip()
 
     def _draw_camera(self):
         frame, fresh = self.input.get_preview()
+        # convert numpy -> pygame image only when a NEW camera frame arrived
+        # (the camera runs slower than the game; re-converting each frame is waste)
         if frame is not None and (fresh or self._cam_source is not frame):
             self._cam_source = frame
             h, w = frame.shape[:2]
             img = pygame.image.frombuffer(frame.tobytes(), (w, h), "RGB")
-            fit = min(self.cam_rect.w / w, self.cam_rect.h / h)
+            fit = min(self.cam_rect.w / w, self.cam_rect.h / h)    # fit inside the panel, keep shape
             self.cam_surface = pygame.transform.smoothscale(img, (round(w * fit), round(h * fit)))
         if self.cam_surface is not None and self._cam_source is not None:
             rect = self.cam_surface.get_rect(center=self.cam_rect.center)

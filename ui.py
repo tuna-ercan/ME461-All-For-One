@@ -4,9 +4,11 @@ import pygame
 
 def draw_text(surface, text, font, color, center, outline=(0, 0, 0), width=3):
     """Text with a dark outline so it reads on top of the busy map art."""
-    img = font.render(text, True, color)
+    img = font.render(text, True, color)        # True = smooth (anti-aliased) letters
     rect = img.get_rect(center=center)
     if outline is not None:
+        # the outline = the same text in black, pasted 8 times around the real
+        # position (left, right, up, down and the diagonals), then the text on top
         shadow = font.render(text, True, outline)
         for dx in range(-width, width + 1, width):
             for dy in range(-width, width + 1, width):
@@ -17,6 +19,8 @@ def draw_text(surface, text, font, color, center, outline=(0, 0, 0), width=3):
 
 
 class Button:
+    """A rounded, clickable rectangle with a label (and optional lines of small text)."""
+
     def __init__(self, text, center, size, font, color=(70, 160, 70), subtitle=None, small_font=None):
         self.text = text
         self.rect = pygame.Rect(0, 0, *size)
@@ -32,12 +36,13 @@ class Button:
                 and self.rect.collidepoint(pos))
 
     def draw(self, surface, mouse=None):
-        hover = mouse is not None and self.rect.collidepoint(mouse)
+        hover = mouse is not None and self.rect.collidepoint(mouse)   # mouse over the button?
+        # hovering: 25% lighter colour and slightly bigger, so it feels "pressable"
         fill = self.color.lerp((255, 255, 255), 0.25) if hover else self.color
         rect = self.rect.inflate(8, 8) if hover else self.rect
-        pygame.draw.rect(surface, (0, 0, 0), rect.move(4, 5), border_radius=18)
-        pygame.draw.rect(surface, fill, rect, border_radius=18)
-        pygame.draw.rect(surface, (0, 0, 0), rect, 4, border_radius=18)
+        pygame.draw.rect(surface, (0, 0, 0), rect.move(4, 5), border_radius=18)   # drop shadow
+        pygame.draw.rect(surface, fill, rect, border_radius=18)                    # body
+        pygame.draw.rect(surface, (0, 0, 0), rect, 4, border_radius=18)           # 4 px black border
         if self.subtitle and self.small_font:   # subtitle = list of lines
             draw_text(surface, self.text, self.font, (255, 255, 255),
                       (rect.centerx, rect.centery - rect.h * 0.18))
@@ -55,7 +60,7 @@ class MapButton(Button):
     def __init__(self, name, image, center, font, color=(60, 60, 70)):
         pad, label_h = 14, font.get_linesize() + 6
         size = (image.get_width() + 2 * pad, image.get_height() + label_h + 2 * pad)
-        super().__init__(name, center, size, font, color)
+        super().__init__(name, center, size, font, color)    # reuse Button's setup and clicked()
         self.image, self.pad = image, pad
 
     def draw(self, surface, mouse=None):

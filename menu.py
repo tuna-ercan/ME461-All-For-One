@@ -1,9 +1,16 @@
-"""Main menu: title + Play / Test, then the player-count picker, then the map picker."""
+"""Main menu: title + Play / Test, then the player-count picker, then the map picker.
+
+The menu is one loop with a `page` variable ("title" -> "players" -> "maps").
+Every frame it handles clicks/keys for the current page and redraws that page.
+All positions are fractions of the canvas size (e.g. h * 0.80 = 80% down),
+so the layout stays right if the canvas size ever changes.
+"""
 import pygame
 
 import config
 from ui import Button, MapButton, draw_text
 
+# two lines of help text shown on each player-count button
 PLAYER_INFO = {
     1: ["two long legs", "left arm + right arm"],
     2: ["P1 arms: top legs", "P2 arms: bottom legs"],
@@ -20,11 +27,13 @@ class Menu:
         self.canvas = display.canvas
         self.input = input_source
         w, h = self.canvas.get_size()
+        # background picture: the whole first map shrunk to the canvas
         self.backdrop = pygame.transform.smoothscale(maps[0].terrain.surface, (w, h))
         demo = pygame.image.load(config.asset("character-demo.png")).convert_alpha()
         size = int(h * 0.42)
         self.demo = pygame.transform.smoothscale(demo, (size, size))
 
+        # SysFont("a,b") tries font a first, then b if a is not installed
         self.title_font = pygame.font.SysFont("arialblack,arial", int(h * 0.13), bold=True)
         self.big_font = pygame.font.SysFont("arialblack,arial", int(h * 0.06), bold=True)
         self.mid_font = pygame.font.SysFont("arialblack,arial", int(h * 0.04), bold=True)
@@ -41,7 +50,7 @@ class Menu:
         bw, bh = int(w * 0.21), int(h * 0.22)
         self.counts = []
         for i, n in enumerate(range(1, config.MAX_PLAYERS + 1)):
-            x = int(w * (0.5 + (i - 1.5) * 0.235))
+            x = int(w * (0.5 + (i - 1.5) * 0.235))      # 4 buttons spread around the centre
             label = f"{n} PLAYER" + ("S" if n > 1 else "")
             self.counts.append((n, Button(label, (x, int(h * 0.55)), (bw, bh), self.big_font,
                                           config.PLAYER_COLORS_RGB[i], PLAYER_INFO[n],
@@ -64,6 +73,8 @@ class Menu:
                     return None
                 if self.display.handle_event(event):
                     continue
+                # mouse events have a window position: convert it to canvas pixels,
+                # because the buttons were placed on the canvas
                 pos = self.display.to_canvas(event.pos) if hasattr(event, "pos") else (-1, -1)
                 key = event.key if event.type == pygame.KEYDOWN else None
                 if key == pygame.K_ESCAPE:

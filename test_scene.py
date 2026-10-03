@@ -45,6 +45,8 @@ class TestScene:
                     return "menu"
             players = self.input.get_players()
             apply_players(self.character, self.scheme, players)
+            # no Character.update() here = no physics: only the leg angles are
+            # moved towards the arm angles, the body never falls or moves
             for leg in self.character.legs.values():   # legs move, body stays put
                 leg.update_angles(dt)
             self.draw(players[0] if players else None)
@@ -54,7 +56,7 @@ class TestScene:
         c = self.canvas
         w, h = c.get_size()
         c.fill(BG)
-        self.character.draw(c, pygame.Vector2(0, 0))
+        self.character.draw(c, pygame.Vector2(0, 0))    # offset 0: the position is already a canvas position
 
         if st is None or not st.visible:
             mouth, color = "NOT SEEN", (150, 150, 150)

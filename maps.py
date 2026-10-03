@@ -10,19 +10,25 @@ THUMB_HEIGHT = 230   # menu picture height (canvas px)
 
 class GameMap:
     def __init__(self, spec):
+        # spec = one dictionary from config.MAPS (name, image files, spawn, scale)
         self.name = spec["name"]
         bg = pygame.image.load(config.asset(spec["background"])).convert_alpha()
         fg = pygame.image.load(config.asset(spec["foreground"])).convert_alpha()
+        # Resize so the map is MAP_HEIGHT tall (times its own "scale"). The
+        # character, flag and view are sized from MAP_HEIGHT, so they look the
+        # same on every map; "scale" makes a map bigger compared to them.
         height = round(config.MAP_HEIGHT * spec.get("scale", 1.0))   # MAP_HEIGHT x map scale
         scale = height / fg.get_height()
-        if abs(scale - 1) > 1e-3:
-            size = (round(fg.get_width() * scale), height)
+        if abs(scale - 1) > 1e-3:                                     # skip if already right
+            size = (round(fg.get_width() * scale), height)            # keep the shape
             bg = pygame.transform.smoothscale(bg, size)
             fg = pygame.transform.smoothscale(fg, size)
         self.terrain = Terrain(bg, fg)
         self.flag = Flag(self.terrain)
         self.spawn = self._find_spawn(*spec["spawn"])
 
+        # Small picture for the map-selection menu: the whole map shrunk to
+        # THUMB_HEIGHT tall, with a shrunk flag pasted at the same relative spot.
         t = self.terrain.surface
         thumb = (round(t.get_width() * THUMB_HEIGHT / t.get_height()), THUMB_HEIGHT)
         self.thumbnail = pygame.transform.smoothscale(t, thumb)
@@ -39,12 +45,13 @@ class GameMap:
         while y > 0 and t.distance(x, y) <= 0:            # start point in rock: go up into air
             y -= 2
         floor = y
-        while floor < t.height - 1 and t.distance(x, floor) > 0:
+        while floor < t.height - 1 and t.distance(x, floor) > 0:    # walk down to the floor
             floor += 2
         ceiling = y
-        while ceiling > 0 and t.distance(x, ceiling) > 0:
+        while ceiling > 0 and t.distance(x, ceiling) > 0:           # walk up to the ceiling (or top)
             ceiling -= 2
         lift = config.MAP_HEIGHT * config.SPAWN_LIFT
+        # normally start `lift` above the floor; in a low tunnel start at its middle
         return pygame.Vector2(x, max(floor - lift, (floor + ceiling) / 2))
 
 

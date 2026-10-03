@@ -1,4 +1,8 @@
-"""Character images: scaled, cropped, mirrored and tinted copies of the part pngs."""
+"""Character images: scaled, cropped, mirrored and tinted copies of the part pngs.
+
+Everything here is done once when a character is built, so the game loop only
+has to rotate and paste ready-made images.
+"""
 import numpy as np
 import pygame
 
@@ -10,16 +14,22 @@ class PivotSprite:
 
     def __init__(self, image, pivot):
         self.image = image
-        self.pivot = pygame.Vector2(pivot)
+        self.pivot = pygame.Vector2(pivot)   # pivot position inside the image (px)
 
     def draw(self, target, pos, angle):
         """Draw with the pivot at `pos`. angle (deg) turns the 'hanging down'
         sprite counter-clockwise on screen, same as pygame.transform.rotate."""
+        # rotozoom rotates (smoothly) but makes a bigger image with the picture
+        # centred in it, so the pivot moves. Fix: take the vector from the pivot to
+        # the image centre, rotate that vector by the same angle, and put the
+        # rotated image's centre at pos + that vector -> the pivot ends at pos.
         img = pygame.transform.rotozoom(self.image, angle, 1.0)
         centre = pygame.Vector2(self.image.get_size()) / 2 - self.pivot
+        # Vector2.rotate turns the other way on screen (y points down), hence -angle
         target.blit(img, img.get_rect(center=pos + centre.rotate(-angle)))
 
     def flipped(self):
+        """Mirror image (left <-> right); the pivot is mirrored too."""
         w = self.image.get_width()
         return PivotSprite(pygame.transform.flip(self.image, True, False),
                            (w - self.pivot.x, self.pivot.y))
@@ -27,10 +37,13 @@ class PivotSprite:
 
 def _crop_scale(surface, pivot, scale):
     """Crop a canvas-sized png to its content and scale it; keep the pivot aligned."""
+    # bounding rect = smallest rectangle around the visible pixels (+2 px margin);
+    # cropping the empty canvas away makes rotating each frame much cheaper
     rect = surface.get_bounding_rect(min_alpha=1).inflate(4, 4).clip(surface.get_rect())
     part = surface.subsurface(rect).copy()
     size = (max(1, round(rect.w * scale)), max(1, round(rect.h * scale)))
     part = pygame.transform.smoothscale(part, size)
+    # the pivot was measured on the full canvas: shift it by the crop, then scale it
     return PivotSprite(part, ((pivot[0] - rect.x) * scale, (pivot[1] - rect.y) * scale))
 
 
@@ -42,12 +55,12 @@ def stretch_leg(surface, k, split):
     w, h = surface.get_size()
     top = int(config.LEG_PIVOT[1])
     split = min(split, h)
-    mid_h = round((split - top) * k)
-    out = pygame.Surface((w, top + mid_h + h - split), pygame.SRCALPHA)
-    out.blit(surface, (0, 0), (0, 0, w, top))
+    mid_h = round((split - top) * k)                         # new height of the stick part
+    out = pygame.Surface((w, top + mid_h + h - split), pygame.SRCALPHA)   # transparent canvas
+    out.blit(surface, (0, 0), (0, 0, w, top))                # 1) above the pivot: unchanged
     mid = surface.subsurface((0, top, w, split - top))
-    out.blit(pygame.transform.smoothscale(mid, (w, mid_h)), (0, top))
-    out.blit(surface, (0, top + mid_h), (0, split, w, h - split))
+    out.blit(pygame.transform.smoothscale(mid, (w, mid_h)), (0, top))   # 2) the stick: stretched
+    out.blit(surface, (0, top + mid_h), (0, split, w, h - split))       # 3) the shoe: moved down
     return out
 
 
@@ -58,13 +71,14 @@ def recolor_red(surface, weights):
     over the channels with `weights` (r, g, b), e.g. (0, 1, 0) = green.
     """
     out = surface.copy()
-    rgb = pygame.surfarray.pixels3d(out)
+    rgb = pygame.surfarray.pixels3d(out)     # numpy view of the pixels: writes change `out`
     r, g, b = (rgb[..., i].astype(np.float32) for i in range(3))
-    mask = (r > g + 40) & (r > b + 40)
-    grey = (g + b) / 2
+    mask = (r > g + 40) & (r > b + 40)       # "clearly red" pixels only (not white laces/black lines)
+    grey = (g + b) / 2                       # brightness without the red part
     for i, w in enumerate(weights):
+        # new channel = grey + redness * weight -> bright red stays bright, dark stays dark
         rgb[..., i][mask] = np.clip(grey + (r - grey) * w, 0, 255)[mask].astype(np.uint8)
-    del rgb
+    del rgb                                  # release the pixel lock so the surface can be drawn
     return out
 
 
@@ -79,8 +93,8 @@ class CharacterSprites:
         def load(name):
             return pygame.image.load(config.asset(name)).convert_alpha()
 
-        self.scale = scale
-        self.leg_stretch = leg_stretch
+        self.scale = scale                   # game px per png px
+        self.leg_stretch = leg_stretch       # 1.5 for the 1-player long legs
         self.head = _crop_scale(load("head.png"), config.HEAD_CENTER, scale)
         thigh = _crop_scale(stretch_leg(load("leg-part.png"), leg_stretch, config.SPRITE_CANVAS),
                             config.LEG_PIVOT, scale)

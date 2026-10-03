@@ -7,31 +7,41 @@ import config
 class Flag:
     def __init__(self, terrain):
         img = pygame.image.load(config.asset("flag.png")).convert_alpha()
+        # Size: FLAG_FRACTION of the reference map height, so the flag is the same
+        # size on every map no matter how big that map is.
         scale = config.MAP_HEIGHT * config.FLAG_FRACTION / img.get_height()   # same size on every map
         self.image = pygame.transform.smoothscale(
             img, (round(img.get_width() * scale), round(img.get_height() * scale)))
+        # A mask is a yes/no grid of which pixels are visible; used for exact
+        # pixel-perfect touch detection (not just the rectangle around the flag).
         self.mask = pygame.mask.from_surface(self.image)
 
         # stand on the highest ground near the right edge, fully inside the map:
         # find the right-most column with room above it for the whole flag, then
         # take the highest such ground within FLAG_SEARCH of the map width from there
-        base_x, base_y = config.FLAG_BASE[0] * scale, config.FLAG_BASE[1] * scale
-        x_max = int(terrain.width - (self.image.get_width() - base_x))
+        base_x, base_y = config.FLAG_BASE[0] * scale, config.FLAG_BASE[1] * scale  # pole foot in the image
+        x_max = int(terrain.width - (self.image.get_width() - base_x))   # cloth must not leave the map
+        # columns (right to left) whose ground is low enough that the flag fits above it
         fits = [x for x in range(x_max, int(base_x), -1) if terrain.ground_y(x) >= base_y]
         if not fits:
             fits = [x_max]
         window = [x for x in fits if x >= fits[0] - terrain.width * config.FLAG_SEARCH]
-        peak_x = min(window, key=terrain.ground_y)
+        peak_x = min(window, key=terrain.ground_y)     # smallest y = highest ground on screen
+        # place the image so its pole foot (base_x, base_y) lands on the ground at peak_x
         self.pos = pygame.Vector2(peak_x - base_x, terrain.ground_y(peak_x) - base_y)
         self.rect = self.image.get_rect(topleft=self.pos)
 
     def touches(self, center, radius):
         """True if a circle (the head) overlaps the flag's visible pixels."""
         r = int(radius)
+        # draw the head as a filled circle on a small transparent image ...
         circle = pygame.Surface((2 * r + 1, 2 * r + 1), pygame.SRCALPHA)
         pygame.draw.circle(circle, (255, 255, 255), (r, r), r)
+        # ... and ask pygame if its mask overlaps the flag mask at that position
+        # (offset = where the circle image's corner sits relative to the flag's corner)
         offset = (int(center[0] - r - self.rect.x), int(center[1] - r - self.rect.y))
         return self.mask.overlap(pygame.mask.from_surface(circle), offset) is not None
 
     def draw(self, target, offset):
+        # offset = top-left of the visible view; map position - offset = screen position
         target.blit(self.image, self.pos - offset)
