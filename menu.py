@@ -1,8 +1,8 @@
-"""Main menu: title + Play / Test, then the player-count picker."""
+"""Main menu: title + Play / Test, then the player-count picker, then the map picker."""
 import pygame
 
 import config
-from ui import Button, draw_text
+from ui import Button, MapButton, draw_text
 
 PLAYER_INFO = {
     1: ["two long legs", "left arm + right arm"],
@@ -13,14 +13,14 @@ PLAYER_INFO = {
 
 
 class Menu:
-    """run() returns ("play", players), ("test", 1) or None to quit."""
+    """run() returns ("play", players, map index), ("test", 1) or None to quit."""
 
-    def __init__(self, display, terrain, input_source):
+    def __init__(self, display, maps, input_source):
         self.display = display
         self.canvas = display.canvas
         self.input = input_source
         w, h = self.canvas.get_size()
-        self.backdrop = pygame.transform.smoothscale(terrain.surface, (w, h))
+        self.backdrop = pygame.transform.smoothscale(maps[0].terrain.surface, (w, h))
         demo = pygame.image.load(config.asset("character-demo.png")).convert_alpha()
         size = int(h * 0.42)
         self.demo = pygame.transform.smoothscale(demo, (size, size))
@@ -48,6 +48,12 @@ class Menu:
                                           self.small_font)))
         self.back = Button("BACK", (cx, int(h * 0.85)), (int(w * 0.14), int(h * 0.09)),
                            self.big_font, (90, 90, 90))
+        self.maps = []
+        for i, game_map in enumerate(maps):
+            x = int(w * (0.5 + (i - (len(maps) - 1) / 2) * 0.42))
+            self.maps.append(MapButton(game_map.name.upper(), game_map.thumbnail,
+                                       (x, int(h * 0.58)), self.mid_font))
+        self.players = 1
 
     def run(self):
         page = "title"
@@ -63,18 +69,25 @@ class Menu:
                 if key == pygame.K_ESCAPE:
                     if page == "title":
                         return None
-                    page = "title"
+                    page = "players" if page == "maps" else "title"
                 if page == "title":
                     if self.play.clicked(event, pos) or key == pygame.K_RETURN:
                         page = "players"
                     elif self.test.clicked(event, pos) or key == pygame.K_t:
                         return "test", 1
-                else:
+                elif page == "players":
                     if self.back.clicked(event, pos):
                         page = "title"
                     for n, button in self.counts:
                         if button.clicked(event, pos) or key == pygame.K_0 + n:
-                            return "play", n
+                            self.players, page = n, "maps"
+                            break
+                else:
+                    if self.back.clicked(event, pos):
+                        page = "players"
+                    for i, button in enumerate(self.maps):
+                        if button.clicked(event, pos) or key == pygame.K_1 + i:
+                            return "play", self.players, i
             self.draw(page)
             self.display.present()
 
@@ -105,9 +118,16 @@ class Menu:
             self.test.draw(c, mouse)
             draw_text(c, "F11 fullscreen", self.small_font, (230, 230, 230),
                       (int(w * 0.92), int(h * 0.96)), width=2)
-        else:
+        elif page == "players":
             draw_text(c, "How many players?", self.big_font, (255, 255, 255),
                       (w // 2, int(h * 0.32)))
             for _, button in self.counts:
+                button.draw(c, mouse)
+            self.back.draw(c, mouse)
+        else:
+            players = f"{self.players} player" + ("s" if self.players > 1 else "")
+            draw_text(c, f"Choose a map  ({players})", self.big_font, (255, 255, 255),
+                      (w // 2, int(h * 0.32)))
+            for button in self.maps:
                 button.draw(c, mouse)
             self.back.draw(c, mouse)

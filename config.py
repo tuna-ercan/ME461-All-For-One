@@ -9,8 +9,23 @@ def asset(name):
     return os.path.join(ASSET_DIR, name)
 
 
+# ----------------------------------------------------------------------- maps --
+# Every map is scaled to MAP_HEIGHT px tall (times its "scale"), so character size,
+# view and physics feel the same on all maps; scale 1.5 = map 1.5x as big compared to
+# the character. spawn = (x, y) as fractions of the map: the character drops from
+# there to the floor. The flag goes on the top-right high ground.
+MAP_HEIGHT = 2164
+MAPS = [
+    {"name": "Mountain", "background": "background.png", "foreground": "foreground.png",
+     "spawn": (0.06, 0.0)},
+    {"name": "Cave", "background": "background-cave.png", "foreground": "foreground-cave.png",
+     "spawn": (0.04, 0.84), "scale": 1.5},
+]
+SPAWN_LIFT = 1 / 8           # start this far (MAP_HEIGHT fraction) above the floor, or mid-gap if lower
+
 # ------------------------------------------------------------------ map / view --
-VIEW_FRACTION = 1 / 3        # game view shows 1/3 of the map width and height
+VIEW_FRACTION = 1 / 3        # game view height = 1/3 of the map height
+VIEW_ASPECT = 4096 / 2164    # view width / height (the mountain map's shape)
 WINDOW_SCALE = 1.0           # max scale of the window (it also shrinks to fit the screen)
 # one window: game screen left, camera right (see display.py), sizes relative to the game view width
 LAYOUT_MARGIN = 0.025
@@ -65,9 +80,10 @@ LEG_STRETCH = {1: 1.5}
 SHOE_TOP = 300               # canvas y where the shoe starts on leg-part-with-shoe.png
 
 # ----------------------------------------------------------------------- flag --
-# flag.png stands on the highest ground in the right-most FLAG_SEARCH part of the map.
+# flag.png stands on the highest ground in the right-most FLAG_SEARCH part of the map
+# that has room above it for the whole flag.
 FLAG_SEARCH = 0.1            # fraction of the map width searched for the peak
-FLAG_FRACTION = 1 / 9        # flag.png canvas height relative to the map height
+FLAG_FRACTION = 1 / 9        # flag.png canvas height relative to MAP_HEIGHT
 FLAG_BASE = (160, 492)       # canvas px of flag.png that sits on the ground (pole foot)
 
 # -------------------------------------------------------------------- physics --

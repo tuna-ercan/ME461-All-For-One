@@ -5,9 +5,9 @@ import config
 from display import Display
 from game import Game
 from menu import Menu
-from terrain import Terrain
+from maps import load_maps
 from test_scene import TestScene
-from viewport import Viewport
+from viewport import view_size
 
 
 class App:
@@ -16,14 +16,10 @@ class App:
         pygame.display.set_caption(config.GAME_TITLE)
         self.input = input_source
 
-        bg = pygame.image.load(config.asset("background.png"))
-        fg = pygame.image.load(config.asset("foreground.png"))
-        view = Viewport(*fg.get_size())
-        self.display = Display((view.w, view.h), input_source)
-
-        self.terrain = Terrain(bg.convert_alpha(), fg.convert_alpha())
-        self.menu = Menu(self.display, self.terrain, input_source)
-        self.game = Game(self.display, self.terrain, input_source, debug)
+        self.display = Display(view_size(), input_source)
+        self.maps = load_maps()
+        self.menu = Menu(self.display, self.maps, input_source)
+        self.game = Game(self.display, input_source, debug)
         self.test = TestScene(self.display, input_source)
 
     def run(self):
@@ -32,8 +28,11 @@ class App:
                 choice = self.menu.run()
                 if choice is None:
                     break
-                mode, players = choice
-                scene = self.test.run() if mode == "test" else self.game.run(players)
+                if choice[0] == "test":
+                    scene = self.test.run()
+                else:
+                    _, players, map_index = choice
+                    scene = self.game.run(players, self.maps[map_index])
                 if scene == "quit":
                     break
         finally:

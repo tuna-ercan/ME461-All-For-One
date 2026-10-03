@@ -5,7 +5,10 @@
 A co-op 2D climbing game controlled with your body. Up to four players share one
 four-legged character: a webcam tracks everyone's arms, and each arm drives one of
 the character's legs. Open your mouth to make your feet sticky and climb walls.
-Get the character's head to the flag on the top-right peak as fast as you can.
+Get the character's head to the flag in the top-right corner as fast as you can.
+
+Two maps: **Mountain** (climb the rocks to the peak) and **Cave** (crawl through the tunnel,
+up the shaft and out onto the grass). Pick one after choosing the number of players.
 
 ![character](assets/character-demo.png)
 
@@ -82,6 +85,7 @@ preview shows which one is in use next to the FPS.
 | `test_scene.py` | 1-player test screen |
 | `character.py` | legs, kinematics, contact physics, sticky feet |
 | `terrain.py` | map image and collision (signed distance field from `foreground.png`) |
+| `maps.py` | the maps: loading/scaling, start point, flag (list in `config.MAPS`) |
 | `flag.py` | goal flag |
 | `viewport.py` | camera that follows the character |
 | `assets.py` | character sprite loading, leg stretching, shoe colour filters |

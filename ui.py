@@ -47,3 +47,26 @@ class Button:
                           (rect.centerx, rect.centery + rect.h * 0.15 + i * line_h), width=2)
         else:
             draw_text(surface, self.text, self.font, (255, 255, 255), rect.center)
+
+
+class MapButton(Button):
+    """A button showing a map picture with its name underneath."""
+
+    def __init__(self, name, image, center, font, color=(60, 60, 70)):
+        pad, label_h = 14, font.get_linesize() + 6
+        size = (image.get_width() + 2 * pad, image.get_height() + label_h + 2 * pad)
+        super().__init__(name, center, size, font, color)
+        self.image, self.pad = image, pad
+
+    def draw(self, surface, mouse=None):
+        hover = mouse is not None and self.rect.collidepoint(mouse)
+        fill = self.color.lerp((255, 255, 255), 0.25) if hover else self.color
+        rect = self.rect.inflate(10, 10) if hover else self.rect
+        pygame.draw.rect(surface, (0, 0, 0), rect.move(4, 5), border_radius=18)
+        pygame.draw.rect(surface, fill, rect, border_radius=18)
+        pygame.draw.rect(surface, (0, 0, 0), rect, 4, border_radius=18)
+        img_rect = self.image.get_rect(midtop=(rect.centerx, rect.top + self.pad))
+        surface.blit(self.image, img_rect)
+        pygame.draw.rect(surface, (0, 0, 0), img_rect, 2)
+        draw_text(surface, self.text, self.font, (255, 255, 255),
+                  (rect.centerx, (img_rect.bottom + rect.bottom) // 2), width=2)

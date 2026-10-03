@@ -4,9 +4,8 @@ import pygame
 import config
 from assets import CharacterSprites
 from character import Character
-from flag import Flag
 from ui import draw_text
-from viewport import Viewport
+from viewport import Viewport, view_size
 
 LEG_LABELS = {"upper_left": "top-left", "upper_right": "top-right",
               "lower_left": "bottom-left", "lower_right": "bottom-right"}
@@ -27,34 +26,31 @@ def apply_players(character, scheme, players):
 
 
 class Game:
-    """run(num_players) plays until Esc ('menu') or window close ('quit').
+    """run(num_players, game_map) plays until Esc ('menu') or window close ('quit').
     Touching the flag with the head completes the level and stops the timer."""
 
-    def __init__(self, display, terrain, input_source, debug=False):
+    def __init__(self, display, input_source, debug=False):
         self.display = display
         self.canvas = display.canvas
-        self.terrain = terrain
+        self.map = self.terrain = self.flag = self.view = None
         self.input = input_source
         self.debug = debug
-        self.view = Viewport(terrain.width, terrain.height)
 
-        self.sprite_scale = terrain.height * config.CHARACTER_FRACTION / config.SPRITE_CANVAS
+        self.sprite_scale = config.MAP_HEIGHT * config.CHARACTER_FRACTION / config.SPRITE_CANVAS
         self._sprites = {}          # leg stretch -> CharacterSprites
         self.character = None
-        self.flag = Flag(terrain)
         self.font = pygame.font.SysFont("arial", 20, bold=True)
         self.timer_font = pygame.font.SysFont("consolas,couriernew", 40, bold=True)
         self.clock = pygame.time.Clock()
         self.scheme = config.CONTROL_SCHEMES[2]
         self.elapsed = 0.0
         self.finished = False
-        self.best = {}              # player count -> best time this session
+        self.best = {}              # (map name, player count) -> best time this session
         self.big_font = pygame.font.SysFont("arialblack,arial", 72, bold=True)
         self.mid_font = pygame.font.SysFont("arialblack,arial", 34, bold=True)
 
     def spawn_point(self):
-        x = self.terrain.width * 0.06
-        return pygame.Vector2(x, self.terrain.ground_y(x) - self.terrain.height / 8)
+        return pygame.Vector2(self.map.spawn)
 
     def build_character(self, num_players):
         """Only the legs that someone controls, stretched for small teams."""
@@ -71,7 +67,9 @@ class Game:
         self.finished = False
 
     # ------------------------------------------------------------------ loop --
-    def run(self, num_players):
+    def run(self, num_players, game_map):
+        self.map, self.terrain, self.flag = game_map, game_map.terrain, game_map.flag
+        self.view = Viewport(self.terrain.width, self.terrain.height, *view_size())
         self.input.set_num_players(num_players)
         self.scheme = config.CONTROL_SCHEMES[num_players]
         self.character = self.build_character(num_players)
@@ -108,10 +106,11 @@ class Game:
 
     def complete(self, num_players):
         self.finished = True
-        best = self.best.get(num_players)
+        key = (self.map.name, num_players)
+        best = self.best.get(key)
         self.new_best = best is None or self.elapsed < best
         if self.new_best:
-            self.best[num_players] = self.elapsed
+            self.best[key] = self.elapsed
 
     def apply_players(self, players):
         apply_players(self.character, self.scheme, players)
@@ -147,7 +146,7 @@ class Game:
             self._text(f"P{i + 1} [{legs}]: {state}", (10, y), config.PLAYER_COLORS_RGB[i])
             y += 24
         height = self.terrain.height - self.character.pos.y
-        self._text(f"height {height / self.terrain.height * 100:.0f}%   "
+        self._text(f"{self.map.name}   height {height / self.terrain.height * 100:.0f}%   "
                    f"F5 restart  F1 debug  F11 fullscreen  Esc menu   {self.clock.get_fps():.0f} FPS",
                    (10, y), (255, 255, 255))
 
@@ -165,7 +164,8 @@ class Game:
         draw_text(self.canvas, f"time  {self.format_time(self.elapsed)}", self.mid_font,
                   (255, 255, 255), (w // 2, h * 0.50))
         n = len({p for p, _, _ in self.scheme})
-        best = "NEW BEST!" if self.new_best else f"best  {self.format_time(self.best[n])}"
+        best = ("NEW BEST!" if self.new_best
+                else f"best  {self.format_time(self.best[(self.map.name, n)])}")
         draw_text(self.canvas, best, self.mid_font, (120, 255, 120), (w // 2, h * 0.59))
         draw_text(self.canvas, "Enter: menu    F5: play again", self.font,
                   (255, 255, 255), (w // 2, h * 0.70), width=2)

@@ -1,0 +1,52 @@
+"""Playable maps: terrain + flag + start point, built from the entries in config.MAPS."""
+import pygame
+
+import config
+from flag import Flag
+from terrain import Terrain
+
+THUMB_HEIGHT = 230   # menu picture height (canvas px)
+
+
+class GameMap:
+    def __init__(self, spec):
+        self.name = spec["name"]
+        bg = pygame.image.load(config.asset(spec["background"])).convert_alpha()
+        fg = pygame.image.load(config.asset(spec["foreground"])).convert_alpha()
+        height = round(config.MAP_HEIGHT * spec.get("scale", 1.0))   # MAP_HEIGHT x map scale
+        scale = height / fg.get_height()
+        if abs(scale - 1) > 1e-3:
+            size = (round(fg.get_width() * scale), height)
+            bg = pygame.transform.smoothscale(bg, size)
+            fg = pygame.transform.smoothscale(fg, size)
+        self.terrain = Terrain(bg, fg)
+        self.flag = Flag(self.terrain)
+        self.spawn = self._find_spawn(*spec["spawn"])
+
+        t = self.terrain.surface
+        thumb = (round(t.get_width() * THUMB_HEIGHT / t.get_height()), THUMB_HEIGHT)
+        self.thumbnail = pygame.transform.smoothscale(t, thumb)
+        self.thumbnail.blit(pygame.transform.smoothscale(
+            self.flag.image, [max(1, round(v * THUMB_HEIGHT / t.get_height()))
+                              for v in self.flag.image.get_size()]),
+            self.flag.pos * THUMB_HEIGHT / t.get_height())
+
+    def _find_spawn(self, fx, fy):
+        """Drop from (fx, fy) (map fractions) to the floor below; start a little above it,
+        but not higher than the middle of the gap (so it fits in tunnels)."""
+        t = self.terrain
+        x, y = fx * t.width, fy * t.height
+        while y > 0 and t.distance(x, y) <= 0:            # start point in rock: go up into air
+            y -= 2
+        floor = y
+        while floor < t.height - 1 and t.distance(x, floor) > 0:
+            floor += 2
+        ceiling = y
+        while ceiling > 0 and t.distance(x, ceiling) > 0:
+            ceiling -= 2
+        lift = config.MAP_HEIGHT * config.SPAWN_LIFT
+        return pygame.Vector2(x, max(floor - lift, (floor + ceiling) / 2))
+
+
+def load_maps():
+    return [GameMap(spec) for spec in config.MAPS]
