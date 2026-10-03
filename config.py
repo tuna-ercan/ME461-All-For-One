@@ -81,6 +81,8 @@ CONTACT_EPS = 2.0            # px; a foot this close to the ground still counts 
 STICKY_GRAB_DIST = 8.0       # px; a sticky foot grabs ground within this distance
 STICKY_BREAK_DIST = 40.0     # px; a sticky foot tears off if pulled this far from its anchor
 STICKY_STIFFNESS = 0.6
+LEG_BLOCK_TOLERANCE = 3.0    # px a free foot may sink into rock while another foot is glued
+STICKY_SINK = 6.0            # px a sticky/glued foot may sink into rock while another foot is glued
 HEAD_FRICTION = 6.0          # 1/s, damping while the head scrapes the ground
 
 # --------------------------------------------------------------------- vision --

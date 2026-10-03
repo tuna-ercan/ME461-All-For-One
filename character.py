@@ -93,8 +93,32 @@ class Character:
 
     # ------------------------------------------------------------ physics --
     def update(self, dt, terrain):
+        """One physics step. While a foot is glued the body is pinned and can't
+        always get out of the way, so a leg could be forced into the rock. Then
+        the step is redone with that leg held still: it stops at the rock.
+        Feet may only sink in a little: free feet LEG_BLOCK_TOLERANCE, sticky
+        feet STICKY_SINK (looks like gripping). Glued feet pushed in by another
+        leg are kept within STICKY_SINK by the solver (_cap_sink)."""
+        before = self._snapshot()
+        depth0 = {leg.name: self._foot_depth(leg, terrain) for leg in self.legs.values()}
+        old = {leg.name: (leg.thigh, leg.bend) for leg in self.legs.values()}
         for leg in self.legs.values():
             leg.update_angles(dt)
+        new = {leg.name: (leg.thigh, leg.bend) for leg in self.legs.values()}
+        self._step(dt, terrain)
+
+        sunk = self._sunk_feet(depth0, terrain)
+        if not sunk or not any(leg.anchor is not None for leg in self.legs.values()):
+            return
+        hold = [leg for leg in sunk if new[leg.name] != old[leg.name]]
+        if hold:
+            self._restore(before)
+            for leg in hold:
+                leg.thigh, leg.bend = old[leg.name]
+            self._step(dt, terrain)
+
+    def _step(self, dt, terrain):
+        for leg in self.legs.values():
             if not leg.sticky:
                 leg.anchor = None
             elif leg.anchor is None:
@@ -111,6 +135,10 @@ class Character:
             for leg in self.legs.values():
                 self._solve_foot(leg, terrain)
             self._solve_head(terrain)
+        for _ in range(2):          # last word goes to the rock: no glued foot deeper than allowed
+            for leg in self.legs.values():
+                if leg.anchor is not None:
+                    self._cap_sink(leg, terrain)
 
         self._update_contacts(terrain)
         self.vel = (self.pos - start) / dt
@@ -121,10 +149,39 @@ class Character:
         self.pos.x = min(max(self.pos.x, 0), terrain.width)
         self.pos.y = min(self.pos.y, terrain.height)
 
+    def _snapshot(self):
+        legs = {leg.name: (V(leg.anchor) if leg.anchor is not None else None,
+                           V(leg.grip) if leg.grip is not None else None,
+                           leg.contact) for leg in self.legs.values()}
+        return V(self.pos), V(self.vel), self.head_contact, legs
+
+    def _restore(self, snap):
+        pos, vel, self.head_contact, legs = snap
+        self.pos, self.vel = V(pos), V(vel)
+        for leg in self.legs.values():
+            anchor, grip, leg.contact = legs[leg.name]
+            leg.anchor = V(anchor) if anchor is not None else None
+            leg.grip = V(grip) if grip is not None else None
+
+    def _foot_depth(self, leg, terrain):
+        """How far the foot circle is inside the rock (<= 0: outside)."""
+        return leg.foot_radius - terrain.distance(*leg.foot(self.pos))
+
+    def _sunk_feet(self, depth0, terrain):
+        """Feet deeper in the rock than allowed and deeper than before this step."""
+        out = []
+        for leg in self.legs.values():
+            limit = config.STICKY_SINK if leg.sticky else config.LEG_BLOCK_TOLERANCE
+            d = self._foot_depth(leg, terrain)
+            if d > max(limit, depth0[leg.name]) + 0.05:   # no creeping in, step by step
+                out.append(leg)
+        return out
+
     def _solve_foot(self, leg, terrain):
         foot = leg.foot(self.pos)
         if leg.anchor is not None:                       # sticky: pull or push
             self.pos += (leg.anchor - foot) * config.STICKY_STIFFNESS
+            self._cap_sink(leg, terrain)                 # ...but never deeper than STICKY_SINK
             return
         d = terrain.distance(*foot)
         if d >= leg.foot_radius:
@@ -139,6 +196,13 @@ class Character:
             leg.grip = V(foot)
         tangent = V(-n.y, n.x)
         self.pos += tangent * (leg.grip - foot).dot(tangent)   # static friction
+
+    def _cap_sink(self, leg, terrain):
+        """Push the body so this glued foot is at most STICKY_SINK inside the rock."""
+        foot = leg.foot(self.pos)
+        excess = leg.foot_radius - config.STICKY_SINK - terrain.distance(*foot)
+        if excess > 0:
+            self.pos += terrain.normal(*foot) * excess
 
     def _solve_head(self, terrain):
         d = terrain.distance(*self.pos)
