@@ -52,15 +52,15 @@ class Game:
         self.sprite_scale = config.MAP_HEIGHT * config.CHARACTER_FRACTION / config.SPRITE_CANVAS
         self._sprites = {}          # leg stretch -> CharacterSprites
         self.character = None
-        self.font = pygame.font.SysFont("arial", 20, bold=True)
-        self.timer_font = pygame.font.SysFont("consolas,couriernew", 40, bold=True)
+        self.font = pygame.font.SysFont(config.FONT_TEXT, 20, bold=True)
+        self.timer_font = pygame.font.SysFont(config.FONT_MONO, 40, bold=True)
         self.clock = pygame.time.Clock()        # measures frame time and limits the FPS
         self.scheme = config.CONTROL_SCHEMES[2]
         self.elapsed = 0.0                      # timer, seconds
         self.finished = False
         self.best = {}              # (map name, player count) -> best time this session
-        self.big_font = pygame.font.SysFont("arialblack,arial", 72, bold=True)
-        self.mid_font = pygame.font.SysFont("arialblack,arial", 34, bold=True)
+        self.big_font = pygame.font.SysFont(config.FONT_HEAVY, 72, bold=True)
+        self.mid_font = pygame.font.SysFont(config.FONT_HEAVY, 34, bold=True)
 
     def spawn_point(self):
         return pygame.Vector2(self.map.spawn)

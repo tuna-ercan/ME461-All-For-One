@@ -9,6 +9,7 @@ Per camera frame (VisionInput._loop):
     -> MediaPipe faces -> match faces to bodies -> limb angles, mouth, head tilt
     -> PlayerState per player + annotated preview picture for the game window
 """
+import importlib.util
 import os
 import threading
 import time
@@ -89,7 +90,9 @@ class PoseDetector:
 
         gpu = torch.cuda.is_available()                        # NVIDIA GPU usable?
         engine = os.path.splitext(model_path)[0] + ".engine"   # yolo26n-pose.engine
-        if gpu and config.USE_TENSORRT and model_path.endswith(".pt") and os.path.exists(engine):
+        # the engine file alone is not enough: the tensorrt package must be installed too
+        trt = importlib.util.find_spec("tensorrt") is not None
+        if gpu and trt and config.USE_TENSORRT and model_path.endswith(".pt") and os.path.exists(engine):
             model_path, self.backend = engine, "TensorRT"
         else:
             self.backend = "GPU" if gpu else "CPU"

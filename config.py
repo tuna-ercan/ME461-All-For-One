@@ -149,6 +149,14 @@ PLAYER_COLORS_BGR = [(0, 0, 255), (0, 220, 0), (255, 120, 0), (0, 220, 255)]
 PLAYER_COLORS_RGB = [tuple(reversed(c)) for c in PLAYER_COLORS_BGR]
 BODY_COLOR_BGR = (150, 150, 150)   # grey for non-controlling body parts in the preview
 
+# ---------------------------------------------------------------------- fonts --
+# Comma-separated lists: pygame uses the first one installed. Windows has Arial /
+# Consolas / Segoe UI Emoji; Linux usually has DejaVu, Liberation or FreeFont.
+FONT_HEAVY = "arialblack,arial,dejavusans,liberationsans,freesans"     # titles, buttons
+FONT_TEXT = "arial,dejavusans,liberationsans,freesans"                 # normal text
+FONT_MONO = "consolas,couriernew,dejavusansmono,liberationmono,freemono"  # numbers, timer
+FONT_EMOJI = "segoeuiemoji,notocoloremoji,notoemoji,symbola"           # the sheep in the menu
+
 # ----------------------------------------------------------------------- menu --
 GAME_TITLE = "All For One"
 GAME_CREDIT = "From The Group MeEeEe"

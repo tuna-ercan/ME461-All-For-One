@@ -1,0 +1,4 @@
+# Optional: TensorRT for ~2x faster pose detection on NVIDIA GPUs (Windows + Linux).
+# Installed by the setup script when you answer "y"; then run: python export_engine.py
+# Needs the CUDA build of PyTorch (the setup script installs it on NVIDIA computers).
+tensorrt-cu13==11.3.0.99

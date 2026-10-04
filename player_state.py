@@ -62,8 +62,10 @@ def limb_chains(xy):
     return dict(zip(LIMBS, arms + legs))
 
 
-def limb_poses(xy, conf, thr=config.KEYPOINT_THR):
+def limb_poses(xy, conf, thr=None):
     """limb name -> LimbPose for every limb whose three keypoints are visible."""
+    if thr is None:                 # read now (not at import) so the Options screen can change it
+        thr = config.KEYPOINT_THR
     ok = conf > thr                 # True for every keypoint the model is sure enough about
     if not (ok[L_SH] and ok[R_SH]):
         return {}
@@ -90,7 +92,7 @@ def limb_poses(xy, conf, thr=config.KEYPOINT_THR):
 @dataclass
 class AngleSmoother:
     """EMA on angles (wrap-safe) so jittery keypoints don't shake the legs."""
-    alpha: float = config.ANGLE_EMA
+    alpha: float | None = None       # None = use config.ANGLE_EMA (read live, the Options screen changes it)
     value: LimbPose | None = None
 
     def update(self, new):
@@ -99,10 +101,11 @@ class AngleSmoother:
         not a 358 degree swing. A missing measurement keeps the last value."""
         if new is None:
             return self.value
+        a = config.ANGLE_EMA if self.alpha is None else self.alpha
         if self.value is None:
             self.value = LimbPose(new.thigh, new.bend)
         else:
             self.value = LimbPose(
-                _wrap(self.value.thigh + self.alpha * _wrap(new.thigh - self.value.thigh)),
-                _wrap(self.value.bend + self.alpha * _wrap(new.bend - self.value.bend)))
+                _wrap(self.value.thigh + a * _wrap(new.thigh - self.value.thigh)),
+                _wrap(self.value.bend + a * _wrap(new.bend - self.value.bend)))
         return self.value

@@ -11,3 +11,12 @@ __pycache__/
 
 # Ultralytics run outputs
 runs/
+
+# Player settings from the Options screen (each computer keeps its own)
+settings.json
+
+# Python environment created by setup.ps1 / setup.sh
+.venv/
+
+# Working files of the documentation builder (tools/docs)
+docs/_build/

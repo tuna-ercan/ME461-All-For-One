@@ -64,7 +64,7 @@ class Display:
         # camera panel: right of the game, 4:3 shape (like a webcam picture), a bit above centre
         self.cam_rect = pygame.Rect(self.game_rect.right + round(m), 0, cam_w, round(cam_w * 3 / 4))
         self.cam_rect.centery = round(self.game_rect.centery - self.game_rect.h * 0.08)
-        self.label_font = pygame.font.SysFont("arial", max(14, cam_w // 22), bold=True)
+        self.label_font = pygame.font.SysFont(config.FONT_TEXT, max(14, cam_w // 22), bold=True)
         self._cam_source = None   # rescale the camera image for the new size
 
     def toggle_fullscreen(self):

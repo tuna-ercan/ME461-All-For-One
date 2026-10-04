@@ -1,4 +1,4 @@
-"""Small UI helpers: clickable buttons and outlined text."""
+"""Small UI helpers: clickable buttons, sliders, switches and outlined text."""
 import pygame
 
 
@@ -75,3 +75,62 @@ class MapButton(Button):
         pygame.draw.rect(surface, (0, 0, 0), img_rect, 2)
         draw_text(surface, self.text, self.font, (255, 255, 255),
                   (rect.centerx, (img_rect.bottom + rect.bottom) // 2), width=2)
+
+
+class Slider:
+    """Horizontal slider for a number between lo and hi. Click or drag to change it."""
+
+    def __init__(self, rect, lo, hi, step, color=(70, 160, 220)):
+        self.rect = pygame.Rect(rect)        # the track
+        self.lo, self.hi, self.step = lo, hi, step
+        self.color = pygame.Color(color)
+        self.dragging = False
+
+    def value_at(self, x):
+        """Mouse x position -> value on the track (snapped to the step)."""
+        t = min(max((x - self.rect.x) / self.rect.w, 0.0), 1.0)
+        v = self.lo + t * (self.hi - self.lo)
+        return round(round(v / self.step) * self.step, 6)
+
+    def handle(self, event, pos):
+        """Returns the new value while the slider is clicked/dragged, otherwise None.
+        pos = mouse position already converted to canvas coordinates."""
+        grab = self.rect.inflate(16, 24)     # a bit bigger than the thin track: easier to hit
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and grab.collidepoint(pos):
+            self.dragging = True
+            return self.value_at(pos[0])
+        if event.type == pygame.MOUSEMOTION and self.dragging:
+            return self.value_at(pos[0])
+        if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            self.dragging = False
+        return None
+
+    def draw(self, surface, value):
+        t = (value - self.lo) / (self.hi - self.lo) if self.hi > self.lo else 0
+        knob_x = self.rect.x + t * self.rect.w
+        track = self.rect.inflate(0, -self.rect.h + 8)               # 8 px tall bar, centred
+        pygame.draw.rect(surface, (60, 60, 66), track, border_radius=4)
+        filled = track.copy()
+        filled.w = max(0, int(knob_x - track.x))
+        pygame.draw.rect(surface, self.color, filled, border_radius=4)  # part left of the knob
+        pygame.draw.circle(surface, (0, 0, 0), (knob_x, self.rect.centery), 11)
+        pygame.draw.circle(surface, (255, 255, 255), (knob_x, self.rect.centery), 8)
+
+
+class Toggle:
+    """On/off switch. Click anywhere on it to flip."""
+
+    def __init__(self, rect, color=(70, 180, 90)):
+        self.rect = pygame.Rect(rect)
+        self.color = pygame.Color(color)
+
+    def clicked(self, event, pos):
+        return (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1
+                and self.rect.inflate(10, 10).collidepoint(pos))
+
+    def draw(self, surface, on):
+        r = self.rect.h // 2
+        pygame.draw.rect(surface, self.color if on else (90, 90, 96), self.rect, border_radius=r)
+        pygame.draw.rect(surface, (0, 0, 0), self.rect, 2, border_radius=r)
+        knob = (self.rect.right - r if on else self.rect.x + r, self.rect.centery)
+        pygame.draw.circle(surface, (255, 255, 255), knob, r - 4)

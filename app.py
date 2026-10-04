@@ -11,6 +11,8 @@ from display import Display
 from game import Game
 from menu import Menu
 from maps import load_maps
+from options_menu import OptionsScene
+from settings import Settings
 from test_scene import TestScene
 from viewport import view_size
 
@@ -20,6 +22,10 @@ class App:
         pygame.init()                                     # start pygame: video, fonts, events
         pygame.display.set_caption(config.GAME_TITLE)     # window title bar text
         self.input = input_source
+        # Saved player settings go into config first, so everything built below
+        # (e.g. the window in fullscreen or not) already uses them.
+        self.settings = Settings()
+        self.settings.load()
 
         # The window must exist before images can be converted for fast drawing,
         # so Display comes first, then the maps (which load and convert images).
@@ -29,6 +35,7 @@ class App:
         self.menu = Menu(self.display, self.maps, input_source)
         self.game = Game(self.display, input_source, debug)
         self.test = TestScene(self.display, input_source)
+        self.options = OptionsScene(self.display, self.maps, input_source, self.settings)
 
     def run(self):
         # try/finally: even if the game crashes, the camera thread is stopped and
@@ -40,6 +47,8 @@ class App:
                     break
                 if choice[0] == "test":
                     scene = self.test.run()
+                elif choice[0] == "options":
+                    scene = self.options.run()
                 else:
                     _, players, map_index = choice
                     scene = self.game.run(players, self.maps[map_index])

@@ -20,7 +20,7 @@ PLAYER_INFO = {
 
 
 class Menu:
-    """run() returns ("play", players, map index), ("test", 1) or None to quit."""
+    """run() returns ("play", players, map index), ("test", 1), ("options",) or None to quit."""
 
     def __init__(self, display, maps, input_source):
         self.display = display
@@ -33,18 +33,20 @@ class Menu:
         size = int(h * 0.42)
         self.demo = pygame.transform.smoothscale(demo, (size, size))
 
-        # SysFont("a,b") tries font a first, then b if a is not installed
-        self.title_font = pygame.font.SysFont("arialblack,arial", int(h * 0.13), bold=True)
-        self.big_font = pygame.font.SysFont("arialblack,arial", int(h * 0.06), bold=True)
-        self.mid_font = pygame.font.SysFont("arialblack,arial", int(h * 0.04), bold=True)
-        self.small_font = pygame.font.SysFont("arial", int(h * 0.024), bold=True)
-        self.credit_font = pygame.font.SysFont("arial", int(h * 0.034), bold=True)
-        self.emoji_font = pygame.font.SysFont("segoeuiemoji", int(h * 0.04))
+        # SysFont("a,b,...") uses the first installed font of the list (see config FONT_*)
+        self.title_font = pygame.font.SysFont(config.FONT_HEAVY, int(h * 0.13), bold=True)
+        self.big_font = pygame.font.SysFont(config.FONT_HEAVY, int(h * 0.06), bold=True)
+        self.mid_font = pygame.font.SysFont(config.FONT_HEAVY, int(h * 0.04), bold=True)
+        self.small_font = pygame.font.SysFont(config.FONT_TEXT, int(h * 0.024), bold=True)
+        self.credit_font = pygame.font.SysFont(config.FONT_TEXT, int(h * 0.034), bold=True)
+        self.sheep = self._render_emoji(config.GAME_CREDIT_EMOJI, int(h * 0.04))
         self.clock = pygame.time.Clock()
 
         cx = w // 2
         self.play = Button("PLAY", (cx, int(h * 0.80)), (int(w * 0.22), int(h * 0.12)),
                            self.big_font, (220, 60, 60))
+        self.options = Button("OPTIONS", (int(w * 0.20), int(h * 0.80)), (int(w * 0.15), int(h * 0.09)),
+                              self.mid_font, (190, 120, 40))
         self.test = Button("1P TEST", (int(w * 0.80), int(h * 0.80)), (int(w * 0.15), int(h * 0.09)),
                            self.mid_font, (60, 110, 200))
         bw, bh = int(w * 0.21), int(h * 0.22)
@@ -86,6 +88,8 @@ class Menu:
                         page = "players"
                     elif self.test.clicked(event, pos) or key == pygame.K_t:
                         return "test", 1
+                    elif self.options.clicked(event, pos) or key == pygame.K_o:
+                        return ("options",)
                 elif page == "players":
                     if self.back.clicked(event, pos):
                         page = "title"
@@ -102,15 +106,27 @@ class Menu:
             self.draw(page)
             self.display.present()
 
+    @staticmethod
+    def _render_emoji(char, size):
+        """The emoji as a picture, or None if no emoji font is installed (common on
+        Linux) - then the credit line is shown without it instead of an empty box."""
+        if pygame.font.match_font(config.FONT_EMOJI) is None:
+            return None
+        try:
+            return pygame.font.SysFont(config.FONT_EMOJI, size).render(char, True, (255, 255, 255))
+        except (pygame.error, ValueError):   # e.g. a bitmap emoji font that can't be resized
+            return None
+
     def draw_credit(self, cx, cy):
-        """'From The Group MeEeEe' + a colour sheep emoji (needs the emoji font)."""
+        """'From The Group MeEeEe' + a colour sheep emoji (if an emoji font exists)."""
         text = self.credit_font.render(config.GAME_CREDIT, True, (255, 255, 255))
-        sheep = self.emoji_font.render(config.GAME_CREDIT_EMOJI, True, (255, 255, 255))
-        gap = 8
-        left = cx - (text.get_width() + gap + sheep.get_width()) // 2
+        sheep = self.sheep
+        gap = 8 if sheep else 0
+        left = cx - (text.get_width() + gap + (sheep.get_width() if sheep else 0)) // 2
         draw_text(self.canvas, config.GAME_CREDIT, self.credit_font, (255, 255, 255),
                   (left + text.get_width() // 2, cy), width=2)
-        self.canvas.blit(sheep, sheep.get_rect(midleft=(left + text.get_width() + gap, cy)))
+        if sheep:
+            self.canvas.blit(sheep, sheep.get_rect(midleft=(left + text.get_width() + gap, cy)))
 
     def draw(self, page):
         c = self.canvas
@@ -127,6 +143,7 @@ class Menu:
             c.blit(self.demo, self.demo.get_rect(center=(w // 2, int(h * 0.51))))
             self.play.draw(c, mouse)
             self.test.draw(c, mouse)
+            self.options.draw(c, mouse)
             draw_text(c, "F11 fullscreen", self.small_font, (230, 230, 230),
                       (int(w * 0.92), int(h * 0.96)), width=2)
         elif page == "players":

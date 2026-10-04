@@ -1,9 +1,13 @@
-pygame
-opencv-python
-numpy
-mediapipe
-ultralytics
-# For GPU speed-up install the CUDA build of torch instead of the default one, e.g.
-#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130
-# and optionally TensorRT (then run: python export_engine.py)
-#   pip install tensorrt-cu13
+# Packages the game needs, pinned to versions the game was tested with.
+# Use the setup script instead of installing this by hand:
+#     Windows:  .\setup.ps1          Linux:  ./setup.sh
+# The setup script installs PyTorch FIRST (CUDA build on NVIDIA computers, small
+# CPU build otherwise), because ultralytics would otherwise pull a default build.
+pygame==2.6.1
+numpy==2.5.3
+# Both OpenCV packages install the same cv2 module (mediapipe wants "contrib", ultralytics
+# the plain one); they MUST have the same version or they overwrite each other.
+opencv-python==4.11.0.86
+opencv-contrib-python==4.11.0.86
+mediapipe==1.0.1
+ultralytics==8.4.170

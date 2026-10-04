@@ -25,9 +25,9 @@ class TestScene:
         self.scheme = config.CONTROL_SCHEMES[PLAYERS]
         sprites = CharacterSprites(TEST_CHARACTER_SCALE, config.LEG_STRETCH.get(PLAYERS, 1.0))
         self.character = Character(sprites, self.center, [leg for _, _, leg in self.scheme])
-        self.huge_font = pygame.font.SysFont("arialblack,arial", int(h * 0.12), bold=True)
-        self.mid_font = pygame.font.SysFont("arialblack,arial", int(h * 0.05), bold=True)
-        self.small_font = pygame.font.SysFont("arial", int(h * 0.03), bold=True)
+        self.huge_font = pygame.font.SysFont(config.FONT_HEAVY, int(h * 0.12), bold=True)
+        self.mid_font = pygame.font.SysFont(config.FONT_HEAVY, int(h * 0.05), bold=True)
+        self.small_font = pygame.font.SysFont(config.FONT_TEXT, int(h * 0.03), bold=True)
         self.clock = pygame.time.Clock()
 
     def run(self):

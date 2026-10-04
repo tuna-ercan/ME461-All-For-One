@@ -1,0 +1,8 @@
+# Optional: tools to rebuild the PDF code guide (python tools/docs/make_docs.py).
+# Not needed to play.
+reportlab==5.0.0
+pypdf==6.19.0
+pypdfium2==5.13.0
+matplotlib==3.10.0
+Pygments==2.19.2
+pillow==11.1.0

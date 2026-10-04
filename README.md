@@ -34,24 +34,36 @@ preview only the arms that control a leg are coloured (P1 red, P2 green, P3 blue
 **1P TEST** in the menu shows the character on a white screen so you can check your arm
 control, mouth and head tilt without the level.
 
-## Install
+## Install (once per computer)
 
-Python 3.12:
+Needs Python 3.10 or newer (3.12 recommended). The setup creates a private environment
+(`.venv`) with the tested package versions, installs the CUDA build of PyTorch on computers
+with an NVIDIA GPU (the CPU build otherwise) and downloads the two AI models.
+
+**Windows:** double-click `setup.bat`
+
+**Linux** (normal x86-64 PC):
 
 ```bash
-pip install -r requirements.txt
+./setup.sh
 ```
 
-The pose model (`yolo26n-pose.pt`) and the face model (`face_landmarker.task`) download
-automatically the first time you run the game.
+On NVIDIA computers the setup offers TensorRT (about 2x faster pose detection, takes ~10 minutes
+to build; the game works without it). On Linux the script also checks the things Linux may be
+missing and tells you the exact fix: the `python3-venv` package, OpenCV's `libgl1`, and webcam
+permission (`sudo usermod -aG video $USER`).
 
 ## Run
 
-```bash
-python main.py              # webcam 0
-python main.py --source 1   # another webcam
-python main.py --keyboard   # no camera, keyboard debug controls (see inputs.py)
-```
+**Windows:** double-click `run.bat` - **Linux:** `./run.sh`
+
+Options go after the command, e.g. `run.bat --keyboard` or `./run.sh --source 1`:
+
+| Option | |
+|---|---|
+| `--source 1` | another webcam (or a video file) |
+| `--keyboard` | no camera, keyboard debug controls (see inputs.py) |
+| `--debug` | start with collision circles shown |
 
 | Key | Action |
 |---|---|
@@ -60,18 +72,27 @@ python main.py --keyboard   # no camera, keyboard debug controls (see inputs.py)
 | F1 | show collision circles |
 | Esc | back to menu / quit |
 
+## Options
+
+**OPTIONS** on the title screen tunes the game without touching code: camera mirroring and
+tracking, mouth thresholds (with the live mouth score shown while you tune), head tilt, leg
+speed and smoothing, gravity, grip, sticky strength and fullscreen. Changes apply at once and
+are saved in `settings.json` (per computer, not in git). **RESET TO DEFAULTS** undoes everything.
+Only safe settings with limited ranges are offered, and a broken `settings.json` is ignored.
+
 ## Faster detection (NVIDIA GPU)
 
-With the CUDA build of PyTorch, the game uses the GPU automatically. For even more speed,
-build a TensorRT engine once per computer (it only works on the GPU it was built on):
-
-```bash
-pip install tensorrt-cu13
-python export_engine.py
-```
-
 The game picks the fastest backend it finds: TensorRT, then the GPU, then the CPU. The camera
-preview shows which one is in use next to the FPS.
+preview shows which one is in use next to the FPS. The TensorRT engine only works on the GPU it
+was built on, so each computer builds its own. The setup offers it; to do it later, install
+`requirements-gpu.txt` and run `export_engine.py` with the environment's Python
+(`.venv\Scripts\python` on Windows, `.venv/bin/python` on Linux).
+
+## Code guide
+
+`docs/All_For_One_Code_Guide.pdf` explains the whole code: architecture, physics, vision, every
+file block by block, and how the AI models work. To rebuild it after changes:
+`pip install -r requirements-dev.txt`, then `python tools/docs/make_docs.py`.
 
 ## Code
 
@@ -95,4 +116,10 @@ preview shows which one is in use next to the FPS.
 | `inputs.py` | input interface + keyboard controls |
 | `config.py` | every tunable number |
 | `export_engine.py` | builds the TensorRT engine |
+| `settings.py` | player settings: what can be tuned, safe ranges, settings.json |
+| `options_menu.py` | the Options screen |
+| `download_models.py` | downloads the AI models (run by the setup) |
+| `setup.bat` / `setup.ps1` / `setup.sh` | one-time setup on Windows / Linux |
+| `run.bat` / `run.sh` | start the game with its environment |
+| `tools/docs/` | rebuilds the PDF code guide |
 | `pose_and_face_test.py` | original pose + face detection experiment |
