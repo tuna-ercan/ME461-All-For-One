@@ -39,8 +39,11 @@ class Leg:
         self.length = config.SEGMENT_LENGTH * stretch * scale   # hip -> knee distance
         # the shin stick stretches, the shoe below it keeps its size (see assets.stretch_leg)
         extra = (config.SHOE_TOP - config.LEG_PIVOT[1]) * (stretch - 1)
-        # knee -> shoe centre while the shin hangs straight down; x mirrored for left legs
-        self.foot_offset = V(side * config.FOOT_OFFSET[0], config.FOOT_OFFSET[1] + extra) * scale
+        # which way the toe points when the shin hangs down: outward normally (= side),
+        # inward for legs in config.MIRRORED_SHOES (they point up, which flips it back out)
+        self.shoe_side = -side if name in config.MIRRORED_SHOES else side
+        # knee -> shoe centre while the shin hangs straight down; x follows the toe direction
+        self.foot_offset = V(self.shoe_side * config.FOOT_OFFSET[0], config.FOOT_OFFSET[1] + extra) * scale
         self.foot_radius = config.FOOT_RADIUS * scale
         self.rest = (thigh, bend)            # pose used at (re)start
         self.thigh, self.bend = thigh, bend  # current angles (outward convention)
@@ -267,7 +270,7 @@ class Character:
             # shoe colour: purple = glued to rock, green = sticky in the air, red = normal
             shin = (sp.shin_stuck if leg.anchor is not None
                     else sp.shin_sticky if leg.sticky else sp.shin)
-            shin[leg.side].draw(target, knee, a_shin)
+            shin[leg.shoe_side].draw(target, knee, a_shin)
             if debug:   # F1: collision circles (green glued, yellow touching, red in air)
                 color = (0, 255, 0) if leg.anchor else (255, 255, 0) if leg.contact else (255, 0, 0)
                 pygame.draw.circle(target, color, foot, leg.foot_radius, 1)

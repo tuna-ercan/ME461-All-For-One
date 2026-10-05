@@ -69,6 +69,9 @@ LEGS = {
     "lower_left":  ((-85, 50), -1, 50, -50),
     "lower_right": ((85, 50), +1, 50, -50),
 }
+# Legs whose shoe is drawn mirrored. Upper legs usually point up, which turns a normal
+# shoe's toe inward; mirroring makes their toes point outward, like character-demo.png.
+MIRRORED_SHOES = {"upper_left", "upper_right"}
 # Who drives which leg, per number of players: (player index, body limb, character leg).
 # Limbs are named by screen side of the mirrored camera image (= the player's own side).
 # Players are numbered left -> right as they stand in front of the camera.

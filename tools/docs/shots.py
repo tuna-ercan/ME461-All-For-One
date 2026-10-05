@@ -73,6 +73,7 @@ def step(c, frames):
             c.update(1 / 180, g.terrain)
         g.view.follow(c.pos, 1 / 60)
         g.elapsed += 1 / 60
+        g.clock.tick(config.FPS)        # like the real loop, so the HUD shows a real FPS value
 
 
 # mountain, 2 players, P2 mouth open (sticky bottom feet)

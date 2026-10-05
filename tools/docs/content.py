@@ -270,6 +270,11 @@ SECTIONS_BEFORE = [
           "(`config.LEG_PIVOT` etc.). `PivotSprite.draw` rotates an image around its joint: pygame rotates "
           "around the image centre, so the code rotates the vector from the joint to the centre by the same angle "
           "and places the rotated image's centre there - the joint ends up exactly where it should."),
+    ("p", "Which way a toe points: the shoe picture points right while the shin hangs down, so left legs use a "
+          "mirrored copy to point outward. The two upper legs are usually raised, which turns the shoe upside "
+          "down and its toe inward - so the legs listed in `config.MIRRORED_SHOES` (the upper two) use the "
+          "opposite copy, and their toes point outward too, like in `character-demo.png`. The foot's "
+          "collision circle follows the same choice (`Leg.shoe_side`)."),
     ("p", "Pictures are prepared once: cropped to their content (so rotating is cheap), scaled, mirrored for left "
           "legs (toes point outward) and recoloured. The recolour filter takes clearly red pixels and moves their "
           "'redness' into other channels, which keeps the shading: green = sticky, purple = glued. For the "

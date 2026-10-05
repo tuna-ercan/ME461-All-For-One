@@ -12,6 +12,12 @@ up the shaft and out onto the grass). Pick one after choosing the number of play
 
 ![character](assets/character-demo.png)
 
+![The game: two players on the Mountain map; the bottom shoes are sticky (green = sticky,
+purple = glued to the rock)](docs/screenshot.png)
+
+*In the game: two players on the Mountain map. Player 2's mouth is open, so the bottom shoes are
+sticky - green while in the air, purple once glued to the rock.*
+
 ## How it plays
 
 - **Arms → legs.** Your shoulder angle sets a leg's hip angle and your elbow angle sets its knee.
