@@ -1,8 +1,9 @@
 # All For One - one-time setup for Windows.
 # Easiest: double-click setup.bat. Or in PowerShell, from the project folder:
 #     powershell -ExecutionPolicy Bypass -File setup.ps1 [-TensorRT | -NoTensorRT]
-# Creates .venv (a private Python environment for the game), installs the pinned
+# Creates .venv (a private Python 3.12 environment for the game), installs the pinned
 # packages, picks the CUDA (NVIDIA) or CPU build of PyTorch and downloads the models.
+# If Python 3.12 is missing it offers to install it with winget.
 param([switch]$TensorRT, [switch]$NoTensorRT)
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
@@ -14,24 +15,48 @@ function Check($what) {
 
 $TorchVersion = "torch==2.14.1", "torchvision==0.29.1"
 
-Step "1/6 Looking for Python 3.10 or newer"
-$py = $null
-foreach ($cand in @(@("py", "-3.12"), @("py", "-3.11"), @("py", "-3.10"), @("python"))) {
-    try {
-        $exe, $rest = $cand
-        & $exe @rest -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)" 2>$null
-        if ($LASTEXITCODE -eq 0) { $py = $cand; break }
-    } catch { }
+Step "1/6 Looking for Python 3.12"
+# The game needs exactly Python 3.12: newer versions do not have packages for
+# mediapipe / PyTorch yet. Other Python versions on the computer are left alone.
+$Is312 = "import sys; sys.exit(0 if sys.version_info[:2] == (3, 12) else 1)"
+function Find-Python312 {
+    $default = Join-Path $env:LOCALAPPDATA "Programs\Python\Python312\python.exe"   # python.org / winget
+    foreach ($cand in @(@("py", "-3.12"), @("python"), @("python3"), @($default))) {
+        try {
+            $exe, $rest = $cand
+            & $exe @rest -c $Is312 2>$null
+            if ($LASTEXITCODE -eq 0) { return , $cand }
+        } catch { }
+    }
+    return $null
+}
+$py = Find-Python312
+if (-not $py -and (Get-Command winget -ErrorAction SilentlyContinue)) {
+    Write-Host "Python 3.12 is not installed. It can be added next to any other Python versions."
+    $answer = Read-Host "Install Python 3.12 now with winget? [y/N]"
+    if ($answer -match '^[yY]') {
+        winget install -e --id Python.Python.3.12 --scope user --accept-package-agreements
+        $py = Find-Python312
+    }
 }
 if (-not $py) {
-    Write-Host "Python 3.10+ not found." -ForegroundColor Red
-    Write-Host "Install Python 3.12 from https://www.python.org (tick 'Add to PATH')." -ForegroundColor Red
+    Write-Host "Python 3.12 not found." -ForegroundColor Red
+    Write-Host "Install it from https://www.python.org/downloads/ (3.12.x), or run:" -ForegroundColor Red
+    Write-Host "    winget install -e --id Python.Python.3.12" -ForegroundColor Red
+    Write-Host "then run the setup again." -ForegroundColor Red
     exit 1
 }
 $exe, $rest = $py
 & $exe @rest --version
 
 Step "2/6 Creating the environment in .venv"
+if (Test-Path ".venv\Scripts\python.exe") {
+    & ".venv\Scripts\python.exe" -c $Is312 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host ".venv was made with another Python version - rebuilding it with Python 3.12"
+        Remove-Item -Recurse -Force ".venv"
+    }
+}
 if (-not (Test-Path ".venv\Scripts\python.exe")) {
     & $exe @rest -m venv .venv; Check "creating .venv"
 } else { Write-Host ".venv already exists - updating it" }

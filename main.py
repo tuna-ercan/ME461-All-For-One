@@ -11,6 +11,7 @@ This file only reads the command line, picks an input source (camera or
 keyboard) and hands it to App, which runs everything else.
 """
 import argparse
+import sys
 
 import config
 from app import App
@@ -18,6 +19,12 @@ from inputs import KeyboardInput
 
 
 def main():
+    # The packages are pinned for Python 3.12 (newer Pythons lack mediapipe / PyTorch
+    # builds). run.bat / run.sh use the .venv made by the setup, which is 3.12.
+    if sys.version_info[:2] != (3, 12):
+        print(f"Warning: this is Python {sys.version.split()[0]}, the game is made for 3.12.\n"
+              "Start it with run.bat / ./run.sh (after setup.bat / ./setup.sh).")
+
     # Describe the command-line options; argparse also builds `--help` from this.
     ap = argparse.ArgumentParser()
     ap.add_argument("--source", default=config.CAMERA_SOURCE, help="webcam index or video path")

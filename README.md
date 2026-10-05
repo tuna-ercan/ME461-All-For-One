@@ -36,9 +36,17 @@ control, mouth and head tilt without the level.
 
 ## Install (once per computer)
 
-Needs Python 3.10 or newer (3.12 recommended). The setup creates a private environment
-(`.venv`) with the tested package versions, installs the CUDA build of PyTorch on computers
-with an NVIDIA GPU (the CPU build otherwise) and downloads the two AI models.
+The game runs on **Python 3.12** (newer versions such as 3.13/3.14 don't have all the needed
+packages yet). The setup creates a private environment (`.venv`) with Python 3.12 and the tested
+package versions, installs the CUDA build of PyTorch on computers with an NVIDIA GPU (the CPU
+build otherwise) and downloads the two AI models. Other Python versions on the computer are left
+alone; an old `.venv` made with another version is rebuilt automatically.
+
+If Python 3.12 is missing:
+- **Windows:** the setup offers to install it with `winget` (or get 3.12.x from python.org).
+- **Linux** (e.g. Ubuntu with 3.14): the setup offers to get it with
+  [uv](https://docs.astral.sh/uv/), for your user only, no `sudo`. Alternative on Ubuntu:
+  `sudo add-apt-repository ppa:deadsnakes/ppa && sudo apt install python3.12 python3.12-venv`.
 
 **Windows:** double-click `setup.bat`
 
@@ -50,7 +58,7 @@ with an NVIDIA GPU (the CPU build otherwise) and downloads the two AI models.
 
 On NVIDIA computers the setup offers TensorRT (about 2x faster pose detection, takes ~10 minutes
 to build; the game works without it). On Linux the script also checks the things Linux may be
-missing and tells you the exact fix: the `python3-venv` package, OpenCV's `libgl1`, and webcam
+missing and tells you the exact fix: the `python3.12-venv` package, OpenCV's `libgl1`, and webcam
 permission (`sudo usermod -aG video $USER`).
 
 ## Run

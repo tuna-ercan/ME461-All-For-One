@@ -330,8 +330,12 @@ SECTIONS_BEFORE = [
           "environment**: a private folder `.venv` with exactly the tested package versions, separate from any "
           "other Python projects on the computer."),
     ("h3", "What the setup script does"),
-    ("ol", ["Finds Python 3.10 or newer (the code uses `str | None` style type hints, which need 3.10).",
-            "Creates `.venv` with Python's built-in `venv` module (or updates it if it exists).",
+    ("ol", ["Finds **Python 3.12** - exactly that version, because newer ones (3.13, 3.14) do not have "
+            "mediapipe/PyTorch packages yet. If it is missing, Windows offers to install it with `winget`; "
+            "Linux offers to get it with `uv`, which downloads a private Python 3.12 for your user (no "
+            "`sudo`, the system Python is not changed).",
+            "Creates `.venv` with Python's built-in `venv` module (or updates it if it exists). A `.venv` "
+            "made with another Python version is deleted and rebuilt with 3.12.",
             "Installs **PyTorch first**: the CUDA build when an NVIDIA GPU is found (`nvidia-smi`), otherwise the "
             "small CPU build. It must come first, because `ultralytics` would otherwise pull a default build.",
             "Installs the pinned game packages from `requirements.txt`.",
@@ -345,7 +349,7 @@ SECTIONS_BEFORE = [
                ["requirements-dev.txt", "tools to rebuild this PDF (not needed to play)"]], [0.3, 0.7], (0,)),
     ("h3", "Linux specifics"),
     ("ul", ["`setup.sh` checks things Windows does not need: that the `venv` module is installed "
-            "(`sudo apt install python3-venv`), that OpenCV finds its system library "
+            "(`sudo apt install python3.12-venv`), that OpenCV finds its system library "
             "(`sudo apt install libgl1 libglib2.0-0`), and that your user may open the webcam "
             "(`sudo usermod -aG video $USER`, then log in again).",
             "Fonts: the game asks for a list of fonts (`config.FONT_*`) and uses the first one installed - Arial "
@@ -365,7 +369,9 @@ FILES = [
      "The entry point. It only reads the command line, creates the right input source and starts the app.",
      [('"""All For One', "Module docstring: how to start the program and what to install."),
       ("import argparse", "Imports. `KeyboardInput` is cheap to import; the camera input is imported later."),
-      ("def main():", "Declare the four command-line options; `parse_args` reads what the user typed."),
+      ("def main():", "Warn if this is not Python 3.12 (the version the packages are pinned for)."),
+      ("# Describe the command-line", "Declare the four command-line options; `parse_args` reads what the user "
+                                      "typed."),
       ("# Both input sources", "Pick the input source. The vision module is imported only here because loading "
                                "torch/ultralytics/mediapipe takes seconds."),
       ("App(source", "Create the app with that source and run it until the player quits."),
@@ -666,8 +672,10 @@ FILES = [
                  "folder."),
       ("function Step", "Helpers: print a step title; stop with a message if the last command failed."),
       ("$TorchVersion", "The pinned PyTorch versions."),
-      ('Step "1/6', "Find Python 3.10+: the `py` launcher (3.12, 3.11, 3.10) or `python`."),
-      ('Step "2/6', "Create .venv (or reuse it) and update pip."),
+      ('Step "1/6', "Find Python 3.12 (`py -3.12`, `python`, or the default install folder); if missing, "
+                    "offer `winget install Python.Python.3.12`."),
+      ('Step "2/6', "Rebuild .venv if it was made with another Python version; create it (or reuse it); "
+                    "update pip."),
       ('Step "3/6', "PyTorch: CUDA build if `nvidia-smi` exists, else the CPU build."),
       ('Step "4/6', "The game's packages from requirements.txt."),
       ('Step "5/6', "Optional TensorRT: ask (or use the option), install, build the engine."),
@@ -680,8 +688,10 @@ FILES = [
       ("set -euo pipefail", "Stop on any error, unset variable or failed pipe; work in the script's folder."),
       ("TRT=ask", "Read the --tensorrt / --no-tensorrt options."),
       ("TORCH=(", "Pinned PyTorch versions and print helpers."),
-      ('step "1/6', "Find Python 3.10+."),
-      ('step "2/6', "Create .venv; if that fails, explain the missing python3-venv package."),
+      ('step "1/6', "Find Python 3.12: `python3.12`/`python3`/`python`, else with `uv` if installed, else "
+                    "offer to install uv (or show the deadsnakes alternative) and stop."),
+      ('step "2/6', "Rebuild .venv if it was made with another Python version; create it; if that fails, "
+                    "explain the missing python3.12-venv package."),
       ('step "3/6', "PyTorch: CUDA build if an NVIDIA GPU answers `nvidia-smi -L`, else the CPU build."),
       ('step "4/6', "Game packages; check that OpenCV can load (libGL) and explain the fix if not."),
       ('step "5/6', "Optional TensorRT: ask only in an interactive terminal."),
