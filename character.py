@@ -111,6 +111,20 @@ class Character:
             leg.anchor_on = leg.grip_on = None
             leg.contact = False
 
+    def free_spot(self, start, terrain):
+        """A start point near `start` where the head and every foot (in the rest pose)
+        are out of the rock: lift it up, or if a ceiling is in the way, try a little
+        to the side. Without this, long legs can start inside the ground and the
+        solver throws the character into the air."""
+        for dx in (0, 40, -40, 80, -80, 120, -120, 160, -160):
+            for dy in range(0, -400, -4):
+                p = V(start[0] + dx, start[1] + dy)
+                if terrain.distance(*p) < self.head_radius + 2:
+                    break                               # head would hit a ceiling: try another column
+                if all(terrain.distance(*leg.foot(p)) >= leg.foot_radius + 2 for leg in self.legs.values()):
+                    return p
+        return V(start)
+
     # ------------------------------------------------------------ physics --
     def update(self, dt, terrain):
         """One physics step. While a foot is glued the body is pinned and can't
@@ -140,6 +154,7 @@ class Character:
             self._step(dt, terrain)
 
     def _step(self, dt, terrain):
+        self._rotor_hits = []       # (rotor, normal, point) of free feet / head pushed by a rotor
         # 0) glue and grip points on a moving part (windmill rotor) move with it
         for leg in self.legs.values():
             if leg.anchor is not None and leg.anchor_on is not None:
@@ -162,6 +177,7 @@ class Character:
         self.vel.y += config.GRAVITY * dt                 # +y is down on screen
         self.vel *= max(0.0, 1.0 - config.AIR_DRAG * dt)
         self.pos += self.vel * dt
+        predicted = V(self.pos)
 
         # 3) solve: fix contacts by moving the body. Each fix can disturb another,
         #    so go round all of them a few times (Gauss-Seidel iterations).
@@ -179,10 +195,23 @@ class Character:
         #    body, so it now has speed and keeps flying after the foot leaves.
         self._update_contacts(terrain)
         self.vel = (self.pos - start) / dt
+        # A rotor that overlapped a leg deeply pushes it out in one step, which would
+        # look like a huge kick. Leaving a blade may only be ROTOR_PUSH_SPEED faster
+        # than the blade itself moves there (glued feet are not limited).
+        for rotor, n, p in self._rotor_hits:
+            away = self.vel.dot(n) - rotor.velocity_at(p).dot(n)
+            if away > config.ROTOR_PUSH_SPEED:
+                self.vel -= n * (away - config.ROTOR_PUSH_SPEED)
         if self.head_contact and not any(l.contact for l in self.legs.values()):
             self.vel *= max(0.0, 1.0 - config.HEAD_FRICTION * dt)   # head sliding on rock slows down
-        if self.vel.length() > config.MAX_SPEED:
-            self.vel.scale_to_length(config.MAX_SPEED)
+        if self.pos != predicted:                       # something pushed or pulled the body
+            if self.vel.length() > config.MAX_SPEED:      # pushes and kicks: limit the speed
+                self.vel.scale_to_length(config.MAX_SPEED)
+        else:
+            # in free flight only the fall is limited. Limiting the whole speed here
+            # would stop the fall from speeding up after a fast sideways fling, and
+            # the character would drift down slowly as if gliding.
+            self.vel.y = min(self.vel.y, config.MAX_SPEED)
         # stay inside the map horizontally and not below its bottom
         self.pos.x = min(max(self.pos.x, 0), terrain.width)
         self.pos.y = min(self.pos.y, terrain.height)
@@ -227,12 +256,14 @@ class Character:
         if d >= leg.foot_radius:                         # shoe circle fully in the air: nothing to do
             return
         n = terrain.normal(*foot)
+        mover = terrain.mover_at(*foot) if terrain.movers else None   # touching the rotor?
+        if mover is not None:
+            self._rotor_hits.append((mover, n, foot))
         self.pos += n * (leg.foot_radius - d)            # push out of the rock
         # Friction only on walkable ground: -n.y is how much the surface faces up
         # (1 = flat floor, 0 = vertical wall). Steeper than WALKABLE_SLOPE: slide.
         # A moving part (windmill rotor) has its own, much smaller limit, so a
         # non-sticky foot slips off it easily (glued feet never get here).
-        mover = terrain.mover_at(*foot) if terrain.movers else None
         slope = mover.walkable_slope if mover is not None else config.WALKABLE_SLOPE
         if -n.y < math.cos(math.radians(slope)):
             leg.grip = None                              # too steep, slide
@@ -259,7 +290,11 @@ class Character:
         d = terrain.distance(*self.pos)
         self.head_contact = d < self.head_radius + config.CONTACT_EPS
         if d < self.head_radius:
-            self.pos += terrain.normal(*self.pos) * (self.head_radius - d)
+            n = terrain.normal(*self.pos)
+            mover = terrain.mover_at(*self.pos) if terrain.movers else None
+            if mover is not None:
+                self._rotor_hits.append((mover, n, V(self.pos)))
+            self.pos += n * (self.head_radius - d)
 
     def _update_contacts(self, terrain):
         """After solving: which feet touch the ground, and tear off over-stretched glue."""

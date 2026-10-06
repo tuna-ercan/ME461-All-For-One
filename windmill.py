@@ -101,6 +101,11 @@ class Windmill:
         a = math.radians(-self.angle)
         self._cos, self._sin = math.cos(a), math.sin(a)
 
+    def velocity_at(self, p):
+        """How fast the rotor surface at point p moves (px/s)."""
+        r = V(p) - self.hub
+        return V(-r.y, r.x) * math.radians(360.0 * self.rps)   # clockwise on screen
+
     def carry(self, p):
         """Where a point stuck on the rotor is after the last update."""
         return self.hub + (V(p) - self.hub).rotate(self.turn)

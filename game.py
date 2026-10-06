@@ -86,8 +86,9 @@ class Game:
         return Character(self._sprites[stretch], self.spawn_point(), legs)
 
     def restart(self):
-        self.character.reset(self.spawn_point())
         self.map.reset()
+        self.character.reset(self.spawn_point())                 # rest pose first...
+        self.character.reset(self.character.free_spot(self.spawn_point(), self.terrain))   # ...then a clear spot
         self.view.snap(self.character.pos)
         self.elapsed = 0.0
         self.finished = False

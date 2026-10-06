@@ -105,12 +105,13 @@ FLAG_BASE = (160, 492)       # canvas px of flag.png that sits on the ground (po
 
 # -------------------------------------------------------------------- physics --
 GRAVITY = 2000.0             # px/s^2 (map pixels)
-MAX_SPEED = 1500.0           # px/s, clamp on body velocity
+MAX_SPEED = 1500.0           # px/s, speed limit while touching; falling speed limit in the air
 AIR_DRAG = 0.3               # 1/s
 LEG_MAX_SPEED = 420.0        # deg/s, how fast a leg joint can follow the arm
 SOLVER_ITERATIONS = 4        # passes over all contacts per physics step (more = stiffer, slower)
 WALKABLE_SLOPE = 55.0        # deg; feet only get friction on surfaces flatter than this
 ROTOR_WALKABLE_SLOPE = 10.0  # deg; same for the windmill rotor: slippery (sticky feet still glue)
+ROTOR_PUSH_SPEED = 400.0     # px/s; a blade can push a free foot/head away at most this much faster than it moves
 CONTACT_EPS = 2.0            # px; a foot this close to the ground still counts as touching
 STICKY_GRAB_DIST = 8.0       # px; a sticky foot grabs ground within this distance
 STICKY_BREAK_DIST = 40.0     # px; a sticky foot tears off if pulled this far from its anchor

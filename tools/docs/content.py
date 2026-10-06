@@ -214,8 +214,10 @@ SECTIONS_BEFORE = [
             "Then push the head out of the rock. Each correction can upset another, so the passes repeat "
             "(the Gauss-Seidel method).",
             "**Rock has the last word** - two extra passes make sure no glued foot is more than 6 px deep.",
-            "**Velocity** - `velocity = (new position - old position) / dt`, then limits (max speed, head "
-            "friction, stay inside the map)."]),
+            "**Velocity** - `velocity = (new position - old position) / dt`, then limits (head friction, "
+            "max speed, stay inside the map). The 1500 px/s limit applies to the whole speed whenever "
+            "something pushed or pulled the body; in free flight only the falling speed is limited, so a "
+            "sideways fling keeps its sideways speed instead of drifting down slowly."]),
     ("h3", "Why this gives jumping and walking for free"),
     ("p", "**Jumping**: if a planted leg straightens quickly, its foot would go into the ground. The solver "
           "pushes the body up instead, by exactly the amount the foot would have sunk. Because velocity is "
@@ -235,7 +237,10 @@ SECTIONS_BEFORE = [
           "physics step its anchor is turned with the rotor (`Windmill.carry`), so the body is pulled along. "
           "Because velocity is measured from movement, letting go flings the character with the speed it had. "
           "Free (non-sticky) feet only grip the rotor where it is flatter than `ROTOR_WALKABLE_SLOPE` (10 "
-          "degrees instead of 55), so without sticky feet the character slips off the blades quickly."),
+          "degrees instead of 55), so without sticky feet the character slips off the blades quickly. A blade "
+          "that overlapped a free foot or the head deeply would push it out in one step - a huge kick - so "
+          "leaving a blade may be at most `ROTOR_PUSH_SPEED` (400 px/s) faster than the blade moves there "
+          "(`Windmill.velocity_at`)."),
     ("h3", "Keeping feet out of the rock while glued"),
     ("p", "With a foot glued, the body is pinned and cannot always move out of the way, so a leg could be forced "
           "into the rock. `Character.update` therefore checks every step: if a moving leg pushed its own foot "
@@ -544,7 +549,8 @@ FILES = [
       ("def spawn_point", "Start position of the current map."),
       ("def build_character", "Create a character with only the controlled legs; sprites are cached per leg "
                               "length."),
-      ("def restart", "Back to the start: character, rotor, view, timer, name entry."),
+      ("def restart", "Back to the start: rotor, character (at a spot where no foot is in the rock), view, "
+                      "timer, name entry."),
       ("def run(self, num_players, game_map):", "Set up the map, view, input and character, then the frame loop: "
                                                 "events (typing the name first), players, physics substeps "
                                                 "(the rotor turns too), camera, timer, flag check, drawing."),
@@ -624,6 +630,7 @@ FILES = [
       ("def _split", "Cut the rotor into three blades and the hub for fast drawing."),
       ("def reset", "Back to angle 0."),
       ("def update", "Turn by 360 x rps x dt; remember this turn and the cosine/sine for lookups."),
+      ("def velocity_at", "Speed of the rotor surface at a point (for limiting pushes)."),
       ("def carry", "Turn a point stuck on the rotor by the last turn."),
       ("def distance", "Far away: a safe estimate. Near: turn the point back and look it up in the table."),
       ("def draw(self", "Draw the tower, then rotate and draw the rotor pieces inside the view (after the "
@@ -673,6 +680,8 @@ FILES = [
       ("def joints", "Hip, knee and foot positions (kinematics)."),
       ("class Character:", "The character: head radius and the controlled legs."),
       ("def reset", "Back to the start pose."),
+      ("def free_spot", "Find a start point where the head and all feet are clear of the rock (long 1-player "
+                        "legs would otherwise start inside the ground and be thrown up)."),
       ("def update", "One physics step with the 'undo and hold the leg' check."),
       ("def _step", "The position-based physics step: move glue/grip points that sit on the rotor, glue, "
                     "predict, solve, cap, velocity."),
