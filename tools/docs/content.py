@@ -192,7 +192,8 @@ SECTIONS_BEFORE = [
     ("p", "The rotor turns clockwise at `rps` = 0.25 turns per second (set per map in `MAPS`). The tower is just "
           "part of the map picture and has no collision. Drawing the rotor means rotating a big picture every "
           "frame, so it is cut into four pieces (three blades and the hub); only pieces inside the view are "
-          "rotated."),
+          "rotated. The tower and the rotor are drawn after the character, so the character passes behind "
+          "them."),
     ("fig", "shot_game_windmill.png", "The windmill map: the rotor is solid and turning; the map panel shows it too.",
      0.85, GAME),
     ("h2", "8. Physics of the character"),
@@ -550,7 +551,7 @@ FILES = [
       ("def complete", "Flag touched: stop the timer, compare with the saved best, start the name entry."),
       ("def name_key", "Typing: characters, Backspace, Enter saves to the score board, Esc skips."),
       ("def apply_players(self, players):", "Method wrapper around the module function."),
-      ("def draw(self, players):", "Draw in painter's order (map, rotor, flag, character, HUD) and present."),
+      ("def draw(self, players):", "Draw in painter's order (map, flag, character, windmill in front, HUD) and present."),
       ("def draw_minimap", "Called by the display to draw the map panel."),
       ("def draw_leg_owners", "Coloured dot on each knee showing which player drives that leg."),
       ("def draw_hud", "Player lines and the info line."),
@@ -617,7 +618,7 @@ FILES = [
      [('"""Windmill:', "Docstring: how the rotor collision works and how feet ride along."),
       ("import math", "Imports."),
       ("PAD = 48", "Empty border of the rotor's table; radius of the hub piece."),
-      ("class Windmill:", "Speed, slipperiness, hub position (scaled to the map), angle; scale the tower picture."),
+      ("class Windmill:", "Speed, slipperiness, hub position (scaled to the map), angle; crop and scale the tower picture."),
       ("# rotor: crop", "Crop the rotor picture to its content and scale it."),
       ("# collision table", "Distance table of the still rotor with a border, and how far it reaches."),
       ("def _split", "Cut the rotor into three blades and the hub for fast drawing."),
@@ -625,7 +626,8 @@ FILES = [
       ("def update", "Turn by 360 x rps x dt; remember this turn and the cosine/sine for lookups."),
       ("def carry", "Turn a point stuck on the rotor by the last turn."),
       ("def distance", "Far away: a safe estimate. Near: turn the point back and look it up in the table."),
-      ("def draw(self", "Rotate and draw the pieces inside the view."),
+      ("def draw(self", "Draw the tower, then rotate and draw the rotor pieces inside the view (after the "
+                        "character, so the windmill is in front of it)."),
       ("def draw_small", "The rotor for the map panel and the menu picture.")]),
     ("terrain.py",
      "Map picture and collision via a signed distance field (see chapter 7).",

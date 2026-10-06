@@ -28,7 +28,7 @@ class GameMap:
         self.windmill = None
         if "windmill" in spec:
             self.windmill = Windmill(spec["windmill"], scale)
-            self.terrain.surface.blit(self.windmill.base, (0, 0))   # tower: just a picture
+            self.terrain.surface.blit(self.windmill.base, self.windmill.base_pos)   # tower: just a picture
             self.terrain.movers.append(self.windmill)               # rotor: solid
         self.flag = Flag(self.terrain)
         self.spawn = self._find_spawn(*spec["spawn"])

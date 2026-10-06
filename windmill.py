@@ -36,9 +36,12 @@ class Windmill:
         self.turn = 0.0                                         # rotation of the last update (deg)
         self._cos, self._sin = 1.0, 0.0                         # of -angle, for distance()
 
+        # tower: crop the big canvas to the tower, scale it, remember where it goes on the map
         base = pygame.image.load(config.asset(spec["base"])).convert_alpha()
+        crop = base.get_bounding_rect(min_alpha=1).inflate(4, 4).clip(base.get_rect())
         self.base = pygame.transform.smoothscale(
-            base, (round(base.get_width() * scale), round(base.get_height() * scale)))
+            base.subsurface(crop), (round(crop.w * scale), round(crop.h * scale)))
+        self.base_pos = V(crop.topleft) * scale
 
         # rotor: crop the big canvas to the rotor, then scale to map size
         img = pygame.image.load(config.asset(spec["blade"])).convert_alpha()
@@ -124,8 +127,10 @@ class Windmill:
 
     # ------------------------------------------------------------ drawing --
     def draw(self, target, offset):
-        """Draw the rotor at its current angle; offset = top-left of the view."""
+        """Draw the tower, then the rotor at its current angle; offset = top-left of the
+        view. Called after the character, so the windmill is in front of it."""
         view = target.get_rect()
+        target.blit(self.base, self.base_pos - offset)
         for piece, centre, radius in self.pieces:
             pos = self.hub + centre.rotate(self.angle) - offset   # piece centre on screen
             if not view.colliderect((pos.x - radius, pos.y - radius, 2 * radius, 2 * radius)):
