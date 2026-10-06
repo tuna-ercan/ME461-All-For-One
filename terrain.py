@@ -39,6 +39,9 @@ class Terrain:
         solid[:, :2] = True      # invisible walls on the map's left/right edges
         solid[:, -2:] = True
         self.sdf = self._signed_distance(solid)
+        # moving solid parts (e.g. a windmill rotor). Each has distance(x, y);
+        # distance() below reports the nearest of the rock and all of them.
+        self.movers = []
 
     @staticmethod
     def _signed_distance(solid):
@@ -54,6 +57,23 @@ class Terrain:
 
     # ----------------------------------------------------------- queries --
     def distance(self, x, y):
+        """Signed distance to the nearest solid thing: rock or a moving part."""
+        d = self.rock_distance(x, y)
+        for m in self.movers:
+            d = min(d, m.distance(x, y))
+        return d
+
+    def mover_at(self, x, y):
+        """The moving part a point touches (closer to it than to the rock), or None.
+        Used to make a foot that grabs a rotor ride along with it."""
+        best, d = None, self.rock_distance(x, y)
+        for m in self.movers:
+            dm = m.distance(x, y)
+            if dm < d:
+                best, d = m, dm
+        return best
+
+    def rock_distance(self, x, y):
         """Bilinear sample of the SDF. Above the map the top row continues upward:
         where it is sky, open sky; where it is rock (side walls, a solid top
         border like the cave's), rock that gets deeper going up, so anything

@@ -28,6 +28,12 @@ MAPS = [
      "spawn": (0.06, 0.0)},
     {"name": "Cave", "background": "background-cave.png", "foreground": "foreground-cave.png",
      "spawn": (0.04, 0.84), "scale": 1.5},
+    # windmill: tower picture (no collision) + rotor that spins and is solid.
+    # hub = rotation centre in the images' pixels, rps = turns per second (clockwise)
+    {"name": "Windmill", "background": "map3-background.png", "foreground": "map3-foreground.png",
+     "spawn": (0.04, 0.0),
+     "windmill": {"base": "map3-windmillbase.png", "blade": "map3-windmillblade.png",
+                  "hub": (1555, 700), "rps": 0.25}},
 ]
 SPAWN_LIFT = 1 / 8           # start this far (MAP_HEIGHT fraction) above the floor, or mid-gap if lower
 
@@ -104,6 +110,7 @@ AIR_DRAG = 0.3               # 1/s
 LEG_MAX_SPEED = 420.0        # deg/s, how fast a leg joint can follow the arm
 SOLVER_ITERATIONS = 4        # passes over all contacts per physics step (more = stiffer, slower)
 WALKABLE_SLOPE = 55.0        # deg; feet only get friction on surfaces flatter than this
+ROTOR_WALKABLE_SLOPE = 10.0  # deg; same for the windmill rotor: slippery (sticky feet still glue)
 CONTACT_EPS = 2.0            # px; a foot this close to the ground still counts as touching
 STICKY_GRAB_DIST = 8.0       # px; a sticky foot grabs ground within this distance
 STICKY_BREAK_DIST = 40.0     # px; a sticky foot tears off if pulled this far from its anchor

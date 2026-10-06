@@ -52,6 +52,7 @@ class Leg:
         self.sticky = False         # player wants this foot sticky (mouth open)
         self.anchor = None          # world point a sticky foot is glued to
         self.grip = None            # world point a grounded foot grips by friction
+        self.anchor_on = self.grip_on = None   # moving part (rotor) the anchor/grip rides on
         self.contact = False        # foot touching the ground this step
 
     # ------------------------------------------------------------ angles --
@@ -107,6 +108,7 @@ class Character:
             leg.thigh, leg.bend = leg.rest
             leg.set_target(*leg.rest)
             leg.anchor = leg.grip = None
+            leg.anchor_on = leg.grip_on = None
             leg.contact = False
 
     # ------------------------------------------------------------ physics --
@@ -138,6 +140,13 @@ class Character:
             self._step(dt, terrain)
 
     def _step(self, dt, terrain):
+        # 0) glue and grip points on a moving part (windmill rotor) move with it
+        for leg in self.legs.values():
+            if leg.anchor is not None and leg.anchor_on is not None:
+                leg.anchor = leg.anchor_on.carry(leg.anchor)
+            if leg.grip is not None and leg.grip_on is not None:
+                leg.grip = leg.grip_on.carry(leg.grip)
+
         # 1) sticky feet: glue to the rock when close enough; let go when not sticky
         for leg in self.legs.values():
             if not leg.sticky:
@@ -146,6 +155,7 @@ class Character:
                 foot = leg.foot(self.pos)
                 if terrain.distance(*foot) < leg.foot_radius + config.STICKY_GRAB_DIST:
                     leg.anchor = foot
+                    leg.anchor_on = terrain.mover_at(*foot)   # None = still rock
 
         # 2) predict: gravity speeds the body up, drag slows it a little, then move
         start = V(self.pos)
@@ -181,14 +191,14 @@ class Character:
         """Copy of everything _step changes, so a step can be undone."""
         legs = {leg.name: (V(leg.anchor) if leg.anchor is not None else None,
                            V(leg.grip) if leg.grip is not None else None,
-                           leg.contact) for leg in self.legs.values()}
+                           leg.contact, leg.anchor_on, leg.grip_on) for leg in self.legs.values()}
         return V(self.pos), V(self.vel), self.head_contact, legs
 
     def _restore(self, snap):
         pos, vel, self.head_contact, legs = snap
         self.pos, self.vel = V(pos), V(vel)
         for leg in self.legs.values():
-            anchor, grip, leg.contact = legs[leg.name]
+            anchor, grip, leg.contact, leg.anchor_on, leg.grip_on = legs[leg.name]
             leg.anchor = V(anchor) if anchor is not None else None
             leg.grip = V(grip) if grip is not None else None
 
@@ -220,12 +230,17 @@ class Character:
         self.pos += n * (leg.foot_radius - d)            # push out of the rock
         # Friction only on walkable ground: -n.y is how much the surface faces up
         # (1 = flat floor, 0 = vertical wall). Steeper than WALKABLE_SLOPE: slide.
-        if -n.y < math.cos(math.radians(config.WALKABLE_SLOPE)):
+        # A moving part (windmill rotor) has its own, much smaller limit, so a
+        # non-sticky foot slips off it easily (glued feet never get here).
+        mover = terrain.mover_at(*foot) if terrain.movers else None
+        slope = mover.walkable_slope if mover is not None else config.WALKABLE_SLOPE
+        if -n.y < math.cos(math.radians(slope)):
             leg.grip = None                              # too steep, slide
             return
         foot = leg.foot(self.pos)
         if leg.grip is None:                             # first touch: remember where
             leg.grip = V(foot)
+            leg.grip_on = mover                          # standing on the rotor: grip rides along
         # tangent = along the surface. Move the body so the foot does not slide
         # along the surface away from its grip point. If the leg sweeps backwards,
         # the foot stays put and the BODY moves forward instead = walking.

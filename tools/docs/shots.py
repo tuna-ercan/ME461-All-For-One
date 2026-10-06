@@ -12,6 +12,8 @@ import config
 from app import App
 from game import apply_players
 from inputs import InputSource
+from minimap import MiniMap
+from scoreboard import ScoreBoard
 from player_state import LimbPose, PlayerState
 from viewport import Viewport, view_size
 
@@ -58,6 +60,7 @@ g = app.game
 def start(map_index, n):
     m = app.maps[map_index]
     g.map, g.terrain, g.flag = m, m.terrain, m.flag
+    g.minimap = MiniMap(m)
     g.view = Viewport(m.terrain.width, m.terrain.height, *view_size())
     src.set_num_players(n)
     g.scheme = config.CONTROL_SCHEMES[n]
@@ -95,13 +98,35 @@ step(c, 120)
 g.draw(src.get_players())
 win("shot_game_cave.png")
 
-# finish screen
+# windmill map, 2 players, rotor in view
+c = start(2, 2)
+step(c, 60)
+g.map.update(0.35)                          # turn the rotor a little
+w = g.map.windmill
+c.reset(w.hub + pygame.Vector2(-520, 330))
+step(c, 20)
+g.view.snap(w.hub + pygame.Vector2(-150, 120))
+g.draw(src.get_players())
+win("shot_game_windmill.png")
+
+# finish screen: name entry, then the score board (a demo board, not the real scores.json)
+demo = os.path.join(OUT, "scores_demo.json")
+if os.path.exists(demo):
+    os.unlink(demo)
+g.scores = ScoreBoard(demo)
+for name, t in (("Sheep Squad Forever", 71.2), ("Rock Goats", 79.9), ("ME461 A", 95.35), ("Night Owls", 102.7)):
+    g.scores.add(name, "Mountain", 4, t)
 c = start(0, 4)
-g.elapsed, g.finished, g.new_best = 83.46, True, True
+g.elapsed, g.finished, g.new_best = 83.46, True, False
+g.entering, g.name, g.saved = True, "MeEeEe", None
 g.view.snap(g.flag.rect.center)
 c.pos.update(g.flag.rect.centerx - 60, g.flag.rect.top + 60)
 g.draw(src.get_players())
 win("shot_complete.png")
+g.saved = g.scores.add(g.name, "Mountain", 4, g.elapsed)
+g.entering = False
+g.draw(src.get_players())
+win("shot_scores.png")
 
 # 1-player test screen
 src.mouth = {0}

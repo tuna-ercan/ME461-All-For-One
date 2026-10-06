@@ -5,8 +5,9 @@
     |  |                          |  +---------+  |
     |  |       game screen        |  | camera  |  |
     |  |                          |  +---------+  |
-    |  |                          |               |
-    |  +--------------------------+               |
+    |  |                          |  +---------+  |
+    |  |                          |  |   map   |  |
+    |  +--------------------------+  +---------+  |
     +--------------------------------------------+
 
 Scenes draw onto `canvas` (map-view sized); present() scales it into the
@@ -61,10 +62,14 @@ class Display:
         self.game_rect = pygame.Rect(round(left + m), 0, round(cw * s), round(ch * s))
         self.game_rect.centery = h // 2
         cam_w = round(config.LAYOUT_CAMERA_WIDTH * cw * s)
-        # camera panel: right of the game, 4:3 shape (like a webcam picture), a bit above centre
-        self.cam_rect = pygame.Rect(self.game_rect.right + round(m), 0, cam_w, round(cam_w * 3 / 4))
-        self.cam_rect.centery = round(self.game_rect.centery - self.game_rect.h * 0.08)
         self.label_font = pygame.font.SysFont(config.FONT_TEXT, max(14, cam_w // 22), bold=True)
+        label = self.label_font.get_linesize() + 6           # room for a "CAMERA" / "MAP" title
+        # right column, top-aligned with the game: camera (4:3 like a webcam picture),
+        # then the map overview using the rest of the height
+        x = self.game_rect.right + round(m)
+        self.cam_rect = pygame.Rect(x, self.game_rect.top + label, cam_w, round(cam_w * 3 / 4))
+        map_top = self.cam_rect.bottom + round(m) + label
+        self.map_rect = pygame.Rect(x, map_top, cam_w, max(20, self.game_rect.bottom - map_top))
         self._cam_source = None   # rescale the camera image for the new size
 
     def toggle_fullscreen(self):
@@ -83,8 +88,10 @@ class Display:
         return ((pos[0] - self.game_rect.x) / self.scale, (pos[1] - self.game_rect.y) / self.scale)
 
     # ---------------------------------------------------------------- draw --
-    def present(self):
-        """Put the finished canvas and the camera picture in the window and show it."""
+    def present(self, minimap=None):
+        """Put the finished canvas, the camera picture and the map overview in the
+        window and show it. minimap(surface, rect) draws the map (the game passes
+        one); without it the map panel shows a short note."""
         self.window.fill(config.LAYOUT_BG)
         if self.game_rect.size == self.canvas.get_size():
             self.window.blit(self.canvas, self.game_rect)          # same size: plain copy (fast)
@@ -93,6 +100,7 @@ class Display:
                              self.game_rect)
         pygame.draw.rect(self.window, (0, 0, 0), self.game_rect.inflate(6, 6), 3)   # black frame
         self._draw_camera()
+        self._draw_map(minimap)
         # Everything above was drawn into a hidden buffer; flip() shows it all at
         # once, so the player never sees a half-drawn frame.
         pygame.display.flip()
@@ -117,4 +125,17 @@ class Display:
                       (200, 200, 200), rect.center, width=1)
         pygame.draw.rect(self.window, (0, 0, 0), rect.inflate(6, 6), 3)
         draw_text(self.window, "CAMERA", self.label_font, (230, 230, 230),
+                  (rect.centerx, rect.top - self.label_font.get_linesize()), width=1)
+
+    def _draw_map(self, minimap):
+        """The whole-map overview under the camera (only filled in during a game)."""
+        if minimap is not None:
+            rect = minimap(self.window, self.map_rect)
+        else:
+            rect = self.map_rect
+            pygame.draw.rect(self.window, (20, 20, 24), rect)
+            draw_text(self.window, "the whole map is shown here during the game", self.label_font,
+                      (150, 150, 150), rect.center, width=1)
+        pygame.draw.rect(self.window, (0, 0, 0), rect.inflate(6, 6), 3)
+        draw_text(self.window, "MAP", self.label_font, (230, 230, 230),
                   (rect.centerx, rect.top - self.label_font.get_linesize()), width=1)

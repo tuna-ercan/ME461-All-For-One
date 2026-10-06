@@ -20,3 +20,7 @@ settings.json
 
 # Working files of the documentation builder (tools/docs)
 docs/_build/
+
+# Score board of finished runs (each computer keeps its own)
+scores.json
+scores.json.*

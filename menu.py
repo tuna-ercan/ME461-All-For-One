@@ -60,10 +60,15 @@ class Menu:
         self.back = Button("BACK", (cx, int(h * 0.85)), (int(w * 0.14), int(h * 0.09)),
                            self.big_font, (90, 90, 90))
         self.maps = []
-        for i, game_map in enumerate(maps):
-            x = int(w * (0.5 + (i - (len(maps) - 1) / 2) * 0.42))
+        for game_map in maps:
             self.maps.append(MapButton(game_map.name.upper(), game_map.thumbnail,
-                                       (x, int(h * 0.58)), self.mid_font))
+                                       (0, int(h * 0.58)), self.mid_font))
+        # side by side, centred, with equal gaps (the cards have different widths)
+        gap = 40
+        x = (w - sum(b.rect.w for b in self.maps) - gap * (len(self.maps) - 1)) // 2
+        for b in self.maps:
+            b.rect.left = x
+            x += b.rect.w + gap
         self.players = 1
 
     def run(self):

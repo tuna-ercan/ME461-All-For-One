@@ -7,8 +7,12 @@ four-legged character: a webcam tracks everyone's arms, and each arm drives one 
 the character's legs. Open your mouth to make your feet sticky and climb walls.
 Get the character's head to the flag in the top-right corner as fast as you can.
 
-Two maps: **Mountain** (climb the rocks to the peak) and **Cave** (crawl through the tunnel,
-up the shaft and out onto the grass). Pick one after choosing the number of players.
+Three maps: **Mountain** (climb the rocks to the peak), **Cave** (crawl through the tunnel,
+up the shaft and out onto the grass) and **Windmill** (cross the valley on the ground, or glue
+yourself to the turning rotor and let it carry you). Pick one after choosing the number of players.
+
+The window shows the game on the left and, on the right, the camera picture with the whole map
+under it (yellow dot = the character, white frame = the part the game view shows).
 
 ![character](assets/character-demo.png)
 
@@ -25,7 +29,11 @@ sticky - green while in the air, purple once glued to the rock.*
   to jump; sweep a planted leg to walk.
 - **Mouth open = sticky feet.** Your shoes turn green. A sticky foot that touches rock
   glues to it (purple shoe) and can pull the body, so you can hang and climb.
-- **Goal.** Touch the flag with the head. The timer stops and your best time is kept for the session.
+- **Windmill.** The rotor is solid and turns at 0.25 turns per second. Sticky feet glue to it and
+  ride along; let go to be flung. Without sticky feet the blades are slippery.
+- **Goal.** Touch the flag with the head. The timer stops, you type a team name, and the time goes
+  on the **score board** (the 8 fastest per map and player count). All saved runs are kept in
+  `scores.json` (per computer, not in git; delete it to clear the board).
 
 | Players | Who controls what |
 |---|---|
@@ -114,13 +122,16 @@ file block by block, and how the AI models work. To rebuild it after changes:
 |---|---|
 | `main.py` | entry point and command-line options |
 | `app.py` | owns the window, switches between menu, game and test |
-| `display.py` | single-window layout: game left, camera right, fullscreen |
+| `display.py` | single-window layout: game left, camera and map panel right, fullscreen |
+| `minimap.py` | the whole-map overview under the camera |
 | `menu.py`, `ui.py` | title screen, player picker, buttons |
-| `game.py` | the level: physics loop, HUD, timer, flag/finish |
+| `game.py` | the level: physics loop, HUD, timer, flag/finish, name entry |
+| `scoreboard.py` | finish times with team names, saved in `scores.json` |
 | `test_scene.py` | 1-player test screen |
 | `character.py` | legs, kinematics, contact physics, sticky feet |
 | `terrain.py` | map image and collision (signed distance field from `foreground.png`) |
 | `maps.py` | the maps: loading/scaling, start point, flag (list in `config.MAPS`) |
+| `windmill.py` | windmill map: tower picture and the spinning, solid rotor |
 | `flag.py` | goal flag |
 | `viewport.py` | camera that follows the character |
 | `assets.py` | character sprite loading, leg stretching, shoe colour filters |

@@ -16,8 +16,8 @@ SECTIONS_BEFORE = [
           "character's legs (hip and knee). There are no buttons: you push the character up the mountain by "
           "moving your arms, and you make its shoes sticky by opening your mouth. The goal is to touch the flag "
           "with the character's head as fast as possible."),
-    ("fig", "shot_game_mountain.png", "The game window: the game view on the left, the camera picture on the "
-                                      "right. P2's mouth is open, so the bottom shoes are sticky - purple = glued to "
+    ("fig", "shot_game_mountain.png", "The game window: the game view on the left; on the right the camera "
+                                      "picture and the whole map with the character (yellow dot). P2's mouth is open, so the bottom shoes are sticky - purple = glued to "
                                       "the rock, green = sticky but still in the air."),
     ("p", "Behind that simple idea there are four separate problems, and the code is organised around them:"),
     ("ul", ["**Seeing the players** - find every person's body joints and mouth in the webcam picture "
@@ -54,14 +54,19 @@ SECTIONS_BEFORE = [
                ["settings.py", "Which settings players may change, their safe ranges, settings.json",
                 "`Setting`, `Settings`"],
                ["options_menu.py", "The Options screen (sliders, switches, live readout)", "`OptionsScene`"],
-               ["display.py", "The one window: game panel + camera panel, scaling, fullscreen", "`Display`"],
+               ["display.py", "The one window: game panel + camera and map panels, scaling, fullscreen",
+                "`Display`"],
+               ["minimap.py", "The whole-map overview under the camera", "`MiniMap`"],
                ["menu.py", "Title page, player-count page, map page", "`Menu`"],
                ["ui.py", "Buttons, sliders, switches and outlined text",
                 "`Button`, `MapButton`, `Slider`, `Toggle`, `draw_text`"],
-               ["game.py", "The level: loop, physics steps, HUD, timer, finish", "`Game`, `apply_players`"],
+               ["game.py", "The level: loop, physics steps, HUD, timer, finish, name entry",
+                "`Game`, `apply_players`"],
+               ["scoreboard.py", "Finish times with team names, saved in scores.json", "`ScoreBoard`"],
                ["test_scene.py", "1-player test screen (no physics)", "`TestScene`"],
                ["maps.py", "Load a map: scale it, find start point and flag", "`GameMap`, `load_maps`"],
                ["terrain.py", "Map picture + collision (signed distance field)", "`Terrain`"],
+               ["windmill.py", "Windmill map: tower picture + spinning, solid rotor", "`Windmill`"],
                ["flag.py", "The goal flag: placement, touch test, drawing", "`Flag`"],
                ["viewport.py", "The game camera that follows the character", "`Viewport`, `view_size`"],
                ["character.py", "Legs, kinematics, physics, drawing of the character", "`Leg`, `Character`"],
@@ -82,7 +87,9 @@ SECTIONS_BEFORE = [
      [0.2, 0.52, 0.28], (0,)),
     ("p", "The `assets/` folder holds the pictures: `background*.png` (sky and far scenery), `foreground*.png` "
           "(the rock you collide with - its transparent pixels are air), the character parts `head.png`, "
-          "`leg-part.png`, `leg-part-with-shoe.png`, `character-demo.png` (menu picture) and `flag.png`. The two "
+          "`leg-part.png`, `leg-part-with-shoe.png`, `character-demo.png` (menu picture) and `flag.png`. The "
+          "windmill map adds `map3-windmillbase.png` (the tower, only a picture) and `map3-windmillblade.png` "
+          "(the rotor, solid); `map3-fullmapdemo.png` shows how the map looks assembled. The two "
           "AI model files `yolo26n-pose.pt` and `face_landmarker.task` download themselves on first run."),
     ("h2", "4. How the parts fit together"),
     ("fig", "fig_architecture.png", "Who creates and uses whom. Arrows point from the user to the thing it uses.",
@@ -91,7 +98,9 @@ SECTIONS_BEFORE = [
           "`App`. `App` creates the window (`Display`), loads the maps and creates the three **scenes** (Menu, "
           "Game, TestScene). A scene is a screen with its own loop. `App.run()` asks the menu what to do, runs that "
           "scene until it returns, and goes back to the menu."),
-    ("p", "The game scene uses a `GameMap` (which owns a `Terrain` for collisions and a `Flag`), builds a "
+    ("p", "The game scene uses a `GameMap` (which owns a `Terrain` for collisions, a `Flag` and, on the "
+          "windmill map, a `Windmill`), a `MiniMap` (the overview under the camera) and a `ScoreBoard` "
+          "(finish times in scores.json), builds a "
           "`Character` (which uses `CharacterSprites` for its pictures) and a `Viewport` (the game camera). It "
           "never talks to the webcam directly - it only calls `input.get_players()`. That is the key design idea: "
           "**the game does not know whether a camera or a keyboard is behind the input**. Both classes inherit "
@@ -171,6 +180,21 @@ SECTIONS_BEFORE = [
           "and right edges counts as ever-deeper rock (invisible walls), and above the top edge the top row "
           "continues upward - sky stays sky, but a solid top border (like the cave's) becomes rock that gets "
           "deeper going up, so nothing can escape through it."),
+    ("h3", "Moving parts: the windmill rotor"),
+    ("p", "The windmill map has a solid part that moves. Its rotor gets its own distance table, made once "
+          "for the rotor standing still. To ask how far a point is from the rotor *now*, the point is turned "
+          "back around the hub by the rotor's current angle and looked up in that still table - turning the "
+          "question is much cheaper than rebuilding the table 180 times a second. `Terrain.distance` returns "
+          "the nearest of the rock and every moving part, so the physics needs no special code to collide with "
+          "the rotor. `Terrain.mover_at` tells which moving part a point touches."),
+    ("formula", "local point = hub + rotate(point - hub, -angle)\n"
+                "rotor distance(point) = still table at the local point"),
+    ("p", "The rotor turns clockwise at `rps` = 0.25 turns per second (set per map in `MAPS`). The tower is just "
+          "part of the map picture and has no collision. Drawing the rotor means rotating a big picture every "
+          "frame, so it is cut into four pieces (three blades and the hub); only pieces inside the view are "
+          "rotated."),
+    ("fig", "shot_game_windmill.png", "The windmill map: the rotor is solid and turning; the map panel shows it too.",
+     0.85, GAME),
     ("h2", "8. Physics of the character"),
     ("p", "The character is deliberately simple: **only the body (the head) has a position and a velocity**. It "
           "cannot rotate. The legs have no mass - each leg is just two angles that turn towards the angles the "
@@ -206,6 +230,11 @@ SECTIONS_BEFORE = [
     ("p", "**Climbing**: a glued foot works in both directions - it can push *and pull* the body. Hanging from a "
           "ledge, a player can bend the glued leg to pull the body up. If the glue is stretched more than 40 px "
           "it tears off."),
+    ("p", "**Riding the rotor**: a foot glued to the rotor remembers that (`anchor_on`). At the start of every "
+          "physics step its anchor is turned with the rotor (`Windmill.carry`), so the body is pulled along. "
+          "Because velocity is measured from movement, letting go flings the character with the speed it had. "
+          "Free (non-sticky) feet only grip the rotor where it is flatter than `ROTOR_WALKABLE_SLOPE` (10 "
+          "degrees instead of 55), so without sticky feet the character slips off the blades quickly."),
     ("h3", "Keeping feet out of the rock while glued"),
     ("p", "With a foot glued, the body is pinned and cannot always move out of the way, so a leg could be forced "
           "into the rock. `Character.update` therefore checks every step: if a moving leg pushed its own foot "
@@ -279,20 +308,37 @@ SECTIONS_BEFORE = [
           "legs (toes point outward) and recoloured. The recolour filter takes clearly red pixels and moves their "
           "'redness' into other channels, which keeps the shading: green = sticky, purple = glued. For the "
           "1-player long legs, `stretch_leg` stretches only the black stick part and moves the shoe down unchanged."),
-    ("h3", "One window, two panels"),
+    ("h3", "One window, three panels"),
     ("p", "Every scene draws onto the same canvas (1365 x 721). `Display.present()` fills the window, scales the "
-          "canvas into the left panel, draws the newest camera picture into the right panel and calls "
+          "canvas into the left panel, draws the newest camera picture at the top of the right column and the "
+          "map overview under it, and calls "
           "`pygame.display.flip()`, which shows the finished frame all at once (no flicker). F11 recreates the "
           "window in fullscreen and recomputes the layout."),
+    ("p", "The map panel (`MiniMap`) shows the whole map with its flag, a white frame around the part the game "
+          "view shows and a yellow dot for the character. The shrunk map picture is made once per panel size; "
+          "only the frame, the dot and the windmill rotor are drawn each frame. On the other screens the panel "
+          "shows a short note."),
     ("fig", "shot_game_debug.png", "F1 debug view: magenta = head circle, feet circles coloured green (glued), "
                                    "yellow (touching) or red (in the air).", 0.85, GAME),
     ("h2", "11. The screens"),
     ("p", "The menu has three pages in one loop (`page` = title, players, maps). PLAY leads to the player count, "
           "then to the map. 1P TEST opens the test screen. Every button position is a fraction of the canvas size."),
-    ("fig", "shot_menu_maps.png", "The map page. Each picture is the whole map shrunk, with its flag.", 0.85, GAME),
+    ("fig", "shot_menu_maps.png", "The map page. Each picture is the whole map shrunk, with its flag; the cards are laid "
+                          "out side by side with equal gaps.", 0.85, GAME),
     ("fig", "shot_test.png", "The 1-player test screen: no physics, the body stays still and the legs follow the "
                              "arms; mouth state in big letters.", 0.85, GAME),
-    ("fig", "shot_complete.png", "Touching the flag with the head stops the timer.", 0.85, GAME),
+    ("fig", "shot_complete.png", "Touching the flag with the head stops the timer and asks for the team name.",
+     0.85, GAME),
+    ("h3", "The score board"),
+    ("p", "After the flag, the team types a name (up to 16 characters, any keyboard layout - the letters arrive "
+          "as `TEXTINPUT` events). **Enter** saves, **Esc** skips saving. The board then shows the 8 fastest "
+          "times on this map with this many players; the new run is gold, and if it is not in the top 8 it "
+          "takes the last line with its real place. Enter goes to the menu, F5 plays again."),
+    ("p", "`ScoreBoard` keeps every saved run in `scores.json` (name, map, player count, time, date) and never "
+          "deletes any. It writes a temporary file first and then swaps it in, so a crash cannot leave a "
+          "half-written file. A broken file is renamed to `scores.json.broken` and the board starts empty. "
+          "Like `settings.json`, the file is not in git."),
+    ("fig", "shot_scores.png", "The score board after saving (demo names).", 0.85, GAME),
 
     ("h2", "12. Options and settings"),
     ("p", "The **OPTIONS** button on the title screen lets players tune the game without touching code: camera, "
@@ -441,13 +487,23 @@ FILES = [
                          "and the canvas."),
       ("def _set_mode", "Create the window: fullscreen at screen size, or windowed at the biggest scale that fits "
                         "92% of the desktop."),
-      ("def _layout", "Compute where the game panel and the camera panel go for a given window size."),
+      ("def _layout", "Compute where the game panel, the camera panel (top of the right column, 4:3) and the "
+                      "map panel (the rest of the column) go for a given window size."),
       ("def toggle_fullscreen", "Switch mode."),
       ("def handle_event", "Keys every scene shares (F11). Returns True if it used the event."),
       ("def to_canvas", "Convert a mouse position from window pixels to canvas pixels."),
-      ("def present", "Draw the frame: background, scaled canvas, frame, camera; then `flip()` shows it."),
+      ("def present", "Draw the frame: background, scaled canvas, frame, camera, map; then `flip()` shows it."),
       ("def _draw_camera", "Turn the newest camera frame (numpy) into a pygame image only when it changed, fit it "
-                           "into the panel, or show 'no camera'.")]),
+                           "into the panel, or show 'no camera'."),
+      ("def _draw_map", "Let the game draw the map overview (it passes a function), or show a note.")]),
+    ("minimap.py",
+     "The whole map in the panel under the camera (chapter 10).",
+     [('"""Map overview', "Docstring and imports."),
+      ("MARKER", "Colours of the character dot and the view frame."),
+      ("class MiniMap:", "Remembers its map and the cached small picture."),
+      ("def _picture", "The map with its flag shrunk to the panel size; redone only when the size changes."),
+      ("def draw", "Fit the map into the panel keeping its shape, draw the turning rotor, the frame of the "
+                   "visible area and the character dot (kept inside the picture).")]),
     ("menu.py",
      "The menu screen with its three pages. Returns what the player chose.",
      [('"""Main menu', "Docstring: how the page loop works."),
@@ -455,7 +511,7 @@ FILES = [
       ("PLAYER_INFO", "Help text on the player-count buttons."),
       ("class Menu:", "Constructor: backdrop picture, demo character, fonts."),
       ("cx = w // 2", "Create every button: PLAY, 1P TEST, the four player-count buttons, BACK and one picture "
-                      "button per map."),
+                      "button per map, laid out side by side with equal gaps."),
       ("def run(self):", "The menu loop: handle quit/F11, convert mouse positions to canvas pixels, react to "
                          "keys and clicks depending on the page, then draw."),
       ("def _render_emoji", "Render the sheep with an emoji font, or None if none is installed (Linux)."),
@@ -478,26 +534,44 @@ FILES = [
      "The level itself: the game loop, players -> legs, physics substeps, camera, timer, flag, HUD and the "
      "finish screen.",
      [('"""Game scene', "Docstring listing the six steps of every frame."),
-      ("import pygame", "Imports and readable leg names for the HUD."),
+      ("import pygame", "Imports."),
+      ("BOARD_ROWS", "Rows of the score board; readable leg names for the HUD."),
       ("def apply_players", "For each (player, limb, leg) row of the scheme: copy the limb's angles to the leg as "
                             "its target and set the leg's sticky flag from the mouth (and head tilt)."),
-      ("class Game:", "Constructor: fonts, clock, sprite scale (character = 1/8 of the map height), best times."),
+      ("class Game:", "Constructor: fonts, clock, sprite scale (character = 1/8 of the map height), score board "
+                      "and name-entry state."),
       ("def spawn_point", "Start position of the current map."),
       ("def build_character", "Create a character with only the controlled legs; sprites are cached per leg "
                               "length."),
-      ("def restart", "Back to the start: character, view, timer."),
+      ("def restart", "Back to the start: character, rotor, view, timer, name entry."),
       ("def run(self, num_players, game_map):", "Set up the map, view, input and character, then the frame loop: "
-                                                "events, players, physics substeps, camera, timer, flag check, "
-                                                "drawing."),
-      ("def complete", "Flag touched: stop the timer, keep the best time per (map, player count)."),
+                                                "events (typing the name first), players, physics substeps "
+                                                "(the rotor turns too), camera, timer, flag check, drawing."),
+      ("def complete", "Flag touched: stop the timer, compare with the saved best, start the name entry."),
+      ("def name_key", "Typing: characters, Backspace, Enter saves to the score board, Esc skips."),
       ("def apply_players(self, players):", "Method wrapper around the module function."),
-      ("def draw(self, players):", "Draw in painter's order and present."),
+      ("def draw(self, players):", "Draw in painter's order (map, rotor, flag, character, HUD) and present."),
+      ("def draw_minimap", "Called by the display to draw the map panel."),
       ("def draw_leg_owners", "Coloured dot on each knee showing which player drives that leg."),
       ("def draw_hud", "Player lines and the info line."),
       ("def format_time", "Seconds -> mm:ss.cc."),
-      ("def draw_complete", "Dark overlay with COMPLETED!, time and best time."),
+      ("def draw_complete", "Dark overlay with COMPLETED!, time and best time, then name entry or board."),
+      ("def draw_name_entry", "Question, text box with a blinking cursor, help line."),
+      ("def draw_board", "Top 8 for this map and player count; this run in gold, on the last line if lower."),
+      ("def _fit", "Shorten a long name with '...' so it never runs into the time column."),
+      ("def _cell", "One table cell aligned left or right."),
       ("def draw_timer", "Timer in the top-right corner (gold when finished)."),
       ("def _text", "Small text with a shadow.")]),
+    ("scoreboard.py",
+     "Finish times with team names, kept in scores.json (chapter 11).",
+     [('"""Score board', "Docstring with the file format."),
+      ("import datetime", "Imports, file path and longest name."),
+      ("class ScoreBoard:", "Load the file at start."),
+      ("def _load", "Read the file; keep only well-formed rows; rename a broken file instead of crashing."),
+      ("def _save", "Write a temporary file, then swap it in."),
+      ("def add", "Store a run with the date and save."),
+      ("def ranking", "Runs on one map with one player count, fastest first."),
+      ("def best", "The fastest time or None.")]),
     ("test_scene.py",
      "1-player test screen: same input and leg logic as the game, but no physics, so the player can check the "
      "controls.",
@@ -530,11 +604,29 @@ FILES = [
      [('"""Playable maps', "Docstring and imports."),
       ("THUMB_HEIGHT", "Height of the menu picture."),
       ("class GameMap:", "Load both pictures and scale them to the common height (times the map's own scale)."),
-      ("self.terrain = Terrain", "Build collision, place the flag, find the start point."),
-      ("# Small picture for", "Make the menu thumbnail with the flag pasted on it."),
+      ("self.terrain = Terrain", "Build collision."),
+      ("self.windmill = None", "Windmill maps: paint the tower into the map picture and add the rotor as a "
+                               "moving solid part; then place the flag and find the start point."),
+      ("# Small picture for", "Make the menu thumbnail with the flag (and rotor) pasted on it."),
+      ("def reset(self):", "Moving parts: reset, turn, draw big and small. Maps without them do nothing."),
       ("def _find_spawn", "From the configured point: go up out of rock if needed, then find floor and ceiling "
                           "and start above the floor (or mid-gap in a low tunnel)."),
       ("def load_maps", "Build every map in the list.")]),
+    ("windmill.py",
+     "The windmill: a tower picture and a solid, spinning rotor (chapter 7).",
+     [('"""Windmill:', "Docstring: how the rotor collision works and how feet ride along."),
+      ("import math", "Imports."),
+      ("PAD = 48", "Empty border of the rotor's table; radius of the hub piece."),
+      ("class Windmill:", "Speed, slipperiness, hub position (scaled to the map), angle; scale the tower picture."),
+      ("# rotor: crop", "Crop the rotor picture to its content and scale it."),
+      ("# collision table", "Distance table of the still rotor with a border, and how far it reaches."),
+      ("def _split", "Cut the rotor into three blades and the hub for fast drawing."),
+      ("def reset", "Back to angle 0."),
+      ("def update", "Turn by 360 x rps x dt; remember this turn and the cosine/sine for lookups."),
+      ("def carry", "Turn a point stuck on the rotor by the last turn."),
+      ("def distance", "Far away: a safe estimate. Near: turn the point back and look it up in the table."),
+      ("def draw(self", "Rotate and draw the pieces inside the view."),
+      ("def draw_small", "The rotor for the map panel and the menu picture.")]),
     ("terrain.py",
      "Map picture and collision via a signed distance field (see chapter 7).",
      [('"""Map image', "Docstring explaining the signed distance field."),
@@ -542,8 +634,11 @@ FILES = [
       ("class Terrain:", "Constructor: compose the map picture (sky, background, foreground)."),
       ("# Alpha channel of", "Build the solid mask from the foreground alpha, add invisible side walls, compute "
                              "the distance field."),
+      ("self.movers = []", "Moving solid parts (the windmill rotor) are added here by the map."),
       ("def _signed_distance", "Two distance transforms (air -> rock, rock -> air) subtracted."),
-      ("def distance", "Smooth lookup of the distance with special rules outside the map."),
+      ("def distance", "Distance to the nearest solid thing: rock or a moving part."),
+      ("def mover_at", "Which moving part a point touches, if any (for feet that ride the rotor)."),
+      ("def rock_distance", "Smooth lookup of the rock distance with special rules outside the map."),
       ("def normal", "Direction out of the rock from the distance gradient."),
       ("def ground_y", "First rock below the open sky in a column (used for the flag).")]),
     ("flag.py",
@@ -577,12 +672,13 @@ FILES = [
       ("class Character:", "The character: head radius and the controlled legs."),
       ("def reset", "Back to the start pose."),
       ("def update", "One physics step with the 'undo and hold the leg' check."),
-      ("def _step", "The position-based physics step: glue, predict, solve, cap, velocity."),
+      ("def _step", "The position-based physics step: move glue/grip points that sit on the rotor, glue, "
+                    "predict, solve, cap, velocity."),
       ("def _snapshot", "Save / restore everything a step changes."),
       ("def _foot_depth", "How deep a foot is in the rock."),
       ("def _sunk_feet", "Feet deeper than allowed and deeper than before."),
       ("def _solve_foot", "Glued: pull towards the anchor. Free: push out of rock, then static friction on "
-                          "walkable ground."),
+                          "walkable ground (much less on the rotor)."),
       ("def _cap_sink", "Limit a glued foot's depth."),
       ("def _solve_head", "Push the head circle out of the rock."),
       ("def _update_contacts", "Contact flags, tear off over-stretched glue, forget grips of lifted feet."),
@@ -735,6 +831,11 @@ SECTIONS_AFTER = [
                ["add a map", "Put `background-x.png` and `foreground-x.png` (transparent = air) in `assets/` and "
                              "add an entry to `MAPS` in config.py with a spawn point (fractions of the map) and "
                              "optionally a `scale`. The flag and the menu picture are automatic."],
+               ["add a windmill to a map", "Add a `\"windmill\"` entry (tower and rotor pictures, hub in image "
+                                           "pixels, `rps`) to the map in `MAPS`, like the Windmill map."],
+               ["change the rotor speed / slipperiness", "`\"rps\"` of the map in `MAPS` / "
+                                                         "`ROTOR_WALKABLE_SLOPE`."],
+               ["clear the score board", "Delete `scores.json` (or remove lines from it)."],
                ["make jumps stronger / weaker", "`LEG_MAX_SPEED` (how fast legs straighten) or `GRAVITY`."],
                ["change who controls which leg", "`CONTROL_SCHEMES` - each row is (player, limb, leg)."],
                ["make the mouth easier to trigger", "Lower `MOUTH_OPEN_T` (and keep `MOUTH_CLOSE_T` about 0.1 lower)."],
