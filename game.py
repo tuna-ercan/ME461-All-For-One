@@ -184,8 +184,8 @@ class Game:
         self.canvas.blit(self.terrain.surface, (0, 0), rect)   # copy just the visible part of the map
         self.flag.draw(self.canvas, offset)
         self.character.draw(self.canvas, offset, self.debug)
-        self.map.draw_movers(self.canvas, offset)               # windmill tower + rotor, in front
         self.draw_leg_owners(offset)
+        self.map.draw_movers(self.canvas, offset)               # windmill tower + rotor, in front of all that
         self.draw_hud(players)
         self.draw_timer()
         if self.finished:

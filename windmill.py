@@ -21,7 +21,7 @@ import config
 from terrain import Terrain
 
 V = pygame.Vector2
-PAD = 48            # px of empty border around the rotor in its distance table
+MARGIN = 150        # px of exact distances outside the circle the blade tips sweep
 HUB_RADIUS = 70     # px around the hub drawn as one piece (the ball and the blade roots)
 
 
@@ -51,16 +51,20 @@ class Windmill:
         self.corner = V(crop.topleft) * scale                   # rotor image corner on the map (angle 0)
         self.rotor = rotor
 
-        # collision table of the still rotor, with a PAD px empty border so points
-        # near the rotor's edge still get a correct (positive) distance
+        # collision table of the still rotor: a square around the hub that covers the
+        # whole circle the blade tips sweep plus MARGIN, so every point that could
+        # touch the rotor at any angle gets an exact distance (MARGIN is bigger than
+        # any collision circle: head, feet, contact and grab distances)
         alpha = pygame.surfarray.array_alpha(rotor).T > 127     # (h, w), True = solid
-        solid = np.zeros((alpha.shape[0] + 2 * PAD, alpha.shape[1] + 2 * PAD), bool)
-        solid[PAD:-PAD, PAD:-PAD] = alpha
-        self.sdf = Terrain._signed_distance(solid)
-        self.origin = self.corner - V(PAD, PAD)                 # map position of sdf[0, 0]
         ys, xs = np.nonzero(alpha)                              # how far the rotor reaches from the hub
         self.reach = float(np.hypot(xs + self.corner.x - self.hub.x,
                                     ys + self.corner.y - self.hub.y).max())
+        half = math.ceil(self.reach + MARGIN) + 2
+        self.origin = V(round(self.hub.x) - half, round(self.hub.y) - half)   # map position of sdf[0, 0]
+        solid = np.zeros((2 * half + 1, 2 * half + 1), bool)
+        ox, oy = round(self.corner.x - self.origin.x), round(self.corner.y - self.origin.y)
+        solid[oy:oy + alpha.shape[0], ox:ox + alpha.shape[1]] = alpha
+        self.sdf = Terrain._signed_distance(solid)
 
         self.pieces = self._split(rotor)
         self._small = None                                      # (k, rotor image) for the overview map
@@ -115,14 +119,11 @@ class Windmill:
         """Signed distance from (x, y) to the rotor at its current angle."""
         dx, dy = x - self.hub.x, y - self.hub.y
         r = math.hypot(dx, dy)
-        if r > self.reach + PAD // 2:
-            return r - self.reach         # far away: a safe (never too big) estimate
+        if r > self.reach + MARGIN:
+            return r - self.reach         # far away: at least MARGIN, nothing can touch here
         # turn the point back by the rotor angle -> position in the still table
         lx = self.hub.x + dx * self._cos - dy * self._sin - self.origin.x
         ly = self.hub.y + dx * self._sin + dy * self._cos - self.origin.y
-        hgt, wid = self.sdf.shape
-        if not (0 <= lx < wid - 1.001 and 0 <= ly < hgt - 1.001):
-            return float(PAD)             # inside the reach circle but beside the rotor's box
         x0, y0 = int(lx), int(ly)         # bilinear sample, as in Terrain.distance
         fx, fy = lx - x0, ly - y0
         s = self.sdf
